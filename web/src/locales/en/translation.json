@@ -1,0 +1,24 @@
+{
+  "brand": "识律 Lex",
+  "tagline": "Legal data, apps and models — full-stack, privately deployable",
+  "nav": {
+    "home": "Home",
+    "console": "Console",
+    "admin": "Admin"
+  },
+  "home": {
+    "intro": "Lex is a legal data platform built for enterprises and private deployment: statute and case retrieval, legal data distribution, domain apps and models — delivered end to end.",
+    "enterConsole": "Open Console",
+    "enterAdmin": "Admin Panel",
+    "skeletonNote": "Skeleton stage: pages are placeholders; capabilities land incrementally via the lex-platform-v1 change."
+  },
+  "console": {
+    "title": "Console",
+    "placeholder": "Console placeholder: tenants, usage, billing and distribution will land here."
+  },
+  "admin": {
+    "title": "Admin",
+    "placeholder": "Admin placeholder: will follow the panel role-gating pattern."
+  },
+  "footer": "识律 Lex · fd-lex skeleton"
+}

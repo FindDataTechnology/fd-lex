@@ -1,0 +1,24 @@
+{
+  "brand": "识律 Lex",
+  "tagline": "法律数据·应用·模型，全栈可私有化",
+  "nav": {
+    "home": "首页",
+    "console": "控制台",
+    "admin": "管理后台"
+  },
+  "home": {
+    "intro": "识律（Lex）是面向企业与私有化交付的法律数据平台：法条与类案检索、法律数据分发、领域应用与模型，一站式落地。",
+    "enterConsole": "进入控制台",
+    "enterAdmin": "管理后台",
+    "skeletonNote": "骨架阶段：页面为占位，能力按 lex-platform-v1 变更逐步落地。"
+  },
+  "console": {
+    "title": "控制台",
+    "placeholder": "控制台占位页：租户、用量、结算与分发入口将在此落地。"
+  },
+  "admin": {
+    "title": "管理后台",
+    "placeholder": "管理后台占位页：将按 panel 角色门禁模式落地。"
+  },
+  "footer": "识律 Lex · fd-lex 骨架"
+}

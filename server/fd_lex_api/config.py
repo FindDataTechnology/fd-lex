@@ -48,11 +48,54 @@ class Settings(BaseSettings):
     metering_poll_limit: int = 500
     metering_auto_create_tables: bool = True
 
+    # --- 控制台（/console）与运营后台（/admin）面 ---------------------------
+    # Logto OIDC：控制台 SPA 走 authorization code + PKCE，服务端只做 ID token
+    # 校验（JWKS/iss/aud）与身份读取——不落任何 Logto 客户端密钥。
+    # logto_issuer 例：https://auth.finddatatech.cloud（issuer 取其 + /oidc）。
+    logto_issuer: str = ""
+    # 控制台 SPA 的 Logto client_id（新建 SPA 应用；redirect URI 见部署文档）。
+    logto_client_id: str = ""
+    # 控制台请求的 Logto API resource：须与 registry auth-server 接受的
+    # audience（LOGTO_M2M_RESOURCE，默认 https://mcp.finddatatech.cloud/api）
+    # 一致——凭据代理以该 access token 作 Bearer 透传给 registry patch-keys。
+    logto_resource: str = "https://mcp.finddatatech.cloud/api"
+    # 非空时要求 ID token 的 organizations claim 命中其一（外部客户隔离门）。
+    logto_required_org_ids: str = ""
+    # 控制台登录请求的 scope（Logto 第一方应用）。
+    console_scopes: str = (
+        "openid profile email roles offline_access urn:logto:scope:organizations"
+    )
+    # 运营后台角色门禁：命中 ID token roles claim 任一即放行（Logto 角色名）。
+    admin_roles: str = "lex-admin"
+    # registry 面（凭据代理目标；同源 Caddy 之外的显式借用契约端点）。
+    registry_base_url: str = "https://mcp.finddatatech.cloud"
+    # 控制台站点 origin（回跳与 CORS 提示用，不参与鉴权判定）。
+    console_origin: str = "https://lex.finddatatech.cloud"
+    # registry patch-keys 代理超时（秒）。
+    registry_timeout_seconds: float = 10.0
+
     def platform_identity_set(self) -> frozenset[str]:
         """平台服务身份名单（小写精确匹配）。"""
         return frozenset(
             name.strip().lower() for name in self.platform_identities.split(",") if name.strip()
         )
+
+    def logto_oidc_base(self) -> str:
+        """Logto issuer（去尾斜杠）；空串=未配置。"""
+        return self.logto_issuer.strip().rstrip("/")
+
+    def required_org_id_set(self) -> frozenset[str]:
+        """必须命中的 Logto organization id 集合（空=不做组织门禁）。"""
+        return frozenset(
+            org.strip() for org in self.logto_required_org_ids.split(",") if org.strip()
+        )
+
+    def admin_role_set(self) -> frozenset[str]:
+        """后台角色名集合（精确匹配 Logto roles claim）。"""
+        return frozenset(role.strip() for role in self.admin_roles.split(",") if role.strip())
+
+    def console_scope_list(self) -> list[str]:
+        return [scope for scope in self.console_scopes.split() if scope]
 
     def describe(self) -> dict[str, Any]:
         """当前生效配置一览（不含令牌明文，排障用）。"""
@@ -65,6 +108,13 @@ class Settings(BaseSettings):
             "registry_mongo_configured": bool(self.registry_mongo_uri and self.registry_mongo_db),
             "registry_mongo_collection": self.registry_mongo_collection,
             "metering_poll_limit": self.metering_poll_limit,
+            "logto_configured": bool(self.logto_oidc_base() and self.logto_client_id),
+            "logto_issuer": self.logto_oidc_base(),
+            "logto_client_id_configured": bool(self.logto_client_id),
+            "logto_resource": self.logto_resource,
+            "logto_required_org_ids": sorted(self.required_org_id_set()),
+            "admin_roles": sorted(self.admin_role_set()),
+            "registry_base_url": self.registry_base_url,
         }
 
 

@@ -1,7 +1,8 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 
-import Admin from './pages/Admin'
-import Console from './pages/Console'
+import AdminApp from './admin/AdminApp'
+import ConsoleApp from './console/ConsoleApp'
+import Deploy from './pages/Deploy'
 import Home from './pages/Home'
 
 function App() {
@@ -9,8 +10,9 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/console" element={<Console />} />
-        <Route path="/admin" element={<Admin />} />
+        <Route path="/console/*" element={<ConsoleApp />} />
+        <Route path="/admin/*" element={<AdminApp />} />
+        <Route path="/deploy" element={<Deploy />} />
       </Routes>
     </BrowserRouter>
   )

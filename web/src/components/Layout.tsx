@@ -61,9 +61,9 @@ function Layout({ children }: { children: ReactNode }) {
               <AnchorLink hash="pricing" className="text-ink-soft transition-colors hover:text-ink">
                 {t('nav.pricing')}
               </AnchorLink>
-              <AnchorLink hash="docs" className="text-ink-soft transition-colors hover:text-ink">
+              <NavLink to="/deploy" className="text-ink-soft transition-colors hover:text-ink">
                 {t('nav.docs')}
-              </AnchorLink>
+              </NavLink>
               <NavLink to="/console" className="text-ink-soft transition-colors hover:text-ink">
                 {t('nav.console')}
               </NavLink>
@@ -149,12 +149,9 @@ function Layout({ children }: { children: ReactNode }) {
                   <span className="font-mono text-xs text-white/55">/mcp</span>
                 </li>
                 <li>
-                  <AnchorLink
-                    hash="docs"
-                    className="text-white/75 transition-colors hover:text-white"
-                  >
+                  <Link to="/deploy" className="text-white/75 transition-colors hover:text-white">
                     {t('footer.entries.deploy')}
-                  </AnchorLink>
+                  </Link>
                 </li>
               </ul>
             </div>

@@ -25,7 +25,7 @@ spec:
     spec:
       containers:
         - name: web
-          image: ccr.ccs.tencentyun.com/finddata-business/fd-lex-web:sha-cd4890d
+          image: ccr.ccs.tencentyun.com/finddata-business/fd-lex-web:sha-c48062b
           imagePullPolicy: IfNotPresent
           ports:
             - name: http

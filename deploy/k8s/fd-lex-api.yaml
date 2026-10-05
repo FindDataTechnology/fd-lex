@@ -1,0 +1,58 @@
+# fd-lex-api — prod (fd-prod)
+# 识律平台 API（计量/结算/对账/内部管理面，FastAPI on :8000）。
+# 只暴露 ClusterIP；控制台将来经 web/nginx /api/ 反代启用（wire 同法）。
+# env ← Secret fd-lex-env（键名表 deploy/README.md；清单无明文）。
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fd-lex-api
+  namespace: fd-prod
+  labels:
+    app.kubernetes.io/name: fd-lex-api
+    app.kubernetes.io/part-of: finddata
+    app.kubernetes.io/environment: production
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: fd-lex-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: fd-lex-api
+        app.kubernetes.io/part-of: finddata
+        app.kubernetes.io/environment: production
+    spec:
+      containers:
+        - name: api
+          image: ccr.ccs.tencentyun.com/finddata-business/fd-lex-api:sha-103b5ba
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8000
+          readinessProbe:
+            httpGet: { path: /healthz, port: http }
+            initialDelaySeconds: 3
+          envFrom:
+            - secretRef:
+                name: fd-lex-env
+          resources:
+            requests: { cpu: 20m, memory: 96Mi }
+            limits: { cpu: 500m, memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fd-lex-api
+  namespace: fd-prod
+  labels:
+    app.kubernetes.io/name: fd-lex-api
+    app.kubernetes.io/part-of: finddata
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: fd-lex-api
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

@@ -1,0 +1,23 @@
+# ArgoCD Application — fd-lex（cheap 集群 fd-prod）。
+# fd-wire 同法：Application 放同步路径之外；Secret 集群内手工创建不入 git。
+# 前置：argocd ns repo 凭据 secret（repo-fd-lex）+ app secret（fd-lex-env）。
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: fd-lex
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://gitee.com/FindDataTechnology/fd-lex.git
+    targetRevision: main
+    path: deploy/k8s
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: fd-prod
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

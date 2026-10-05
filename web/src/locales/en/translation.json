@@ -1,24 +1,188 @@
 {
   "brand": "识律 Lex",
-  "tagline": "Legal data, apps and models — full-stack, privately deployable",
   "nav": {
-    "home": "Home",
-    "console": "Console",
-    "admin": "Admin"
+    "label": "Site navigation",
+    "capabilities": "Capabilities",
+    "pricing": "Pricing",
+    "docs": "Private Deployment",
+    "console": "Console"
   },
-  "home": {
-    "intro": "Lex is a legal data platform built for enterprises and private deployment: statute and case retrieval, legal data distribution, domain apps and models — delivered end to end.",
-    "enterConsole": "Open Console",
-    "enterAdmin": "Admin Panel",
-    "skeletonNote": "Skeleton stage: pages are placeholders; capabilities land incrementally via the lex-platform-v1 change."
+  "hero": {
+    "titleLine1": "Legal data · apps · models",
+    "titleLine2": "Vertically integrated, privately deployable end to end",
+    "lede": "Lex is the legal-technology product line of FindData: statute and case data, contract-intelligence apps, in-house legal models and the execution base, delivered as one versioned distribution package — one capability set across two hosts, our cloud or your machine room.",
+    "stats": {
+      "wenshu": { "value": "10.5M", "label": "court judgments" },
+      "catalog": { "value": "32,275", "label": "statute catalog entries" },
+      "tools": { "value": "52", "label": "contract-intelligence tools" }
+    },
+    "ctaCatalog": "Browse the capability catalog",
+    "ctaConsole": "Open the console",
+    "diagram": {
+      "caption": "One distribution package · two hosts",
+      "captionSub": "Cloud / on-premises",
+      "model": { "name": "Models", "items": "Judge · Drafter", "host": "On-prem only" },
+      "app": { "name": "Apps", "items": "LawBench contract intelligence", "host": "Cloud · On-prem" },
+      "data": { "name": "Data", "items": "Statutes · cases · guiding cases · corpora", "host": "Cloud · On-prem" }
+    }
+  },
+  "badge": {
+    "both": "Dual-host",
+    "privateOnly": "On-prem only"
+  },
+  "capabilities": {
+    "title": "Capability catalog",
+    "lede": "Lex capabilities are produced by a single builder and delivered in one versioned distribution package, hosted in our cloud or in your machine room. Every entry's availability per host is stated honestly; no unstated host differences exist beyond this catalog.",
+    "columnCapability": "Capability",
+    "columnPoints": "Highlights",
+    "columnHost": "Hosting",
+    "items": {
+      "retrieval": {
+        "name": "Legal data search",
+        "latin": "Legal Search MCP",
+        "desc": "Legal search service for agents and business systems, with source citations attached to results.",
+        "points": [
+          "Statute semantic search",
+          "Similar-case search",
+          "Guiding-case search",
+          "Article-level citation parsing",
+          "Five-source corpus (provided with the corpus pack)"
+        ],
+        "host": "both",
+        "note": ""
+      },
+      "contract": {
+        "name": "Contract intelligence",
+        "latin": "LawBench",
+        "desc": "The legal contract workbench: drafting and review.",
+        "points": [
+          "Contract drafting and generation",
+          "Contract review",
+          "52 domain tools"
+        ],
+        "host": "both",
+        "note": ""
+      },
+      "models": {
+        "name": "In-house legal models",
+        "latin": "Lex Models",
+        "desc": "In-house fine-tuned models on two legs: review and drafting.",
+        "points": [
+          "Judge (judge_c) · review",
+          "Drafter (drafter_a) · drafting",
+          "Quantized artifacts and paired evaluation reports ship with the package"
+        ],
+        "host": "private",
+        "note": "Cloud GPU inference and model API: not provided in v1 (planned for v1.x)"
+      },
+      "distribution": {
+        "name": "Private distribution package",
+        "latin": "Distribution",
+        "desc": "Versioned full-stack delivery: installation, upgrades, three data tiers and incremental updates.",
+        "points": [
+          "Citation pack: statute library + statute catalog + guiding cases (required base)",
+          "Corpus pack: adds the five-source corpus and contract templates (optional)",
+          "Judgment pack: full judgments, approx. 175 GB, customized after per-project legal review",
+          "Incremental updates: daily / weekly pulls + offline full-package fallback"
+        ],
+        "host": "private",
+        "note": "On-premises side only"
+      },
+      "api": {
+        "name": "API / MCP access",
+        "latin": "API & MCP",
+        "desc": "One credential for legal search and legal data tools.",
+        "points": [
+          "MCP protocol endpoint",
+          "Legal data tool set",
+          "Dual-unit metering: per row / per call"
+        ],
+        "host": "both",
+        "note": ""
+      }
+    },
+    "footnote": "Capability differences between the two hosts are limited to what this catalog annotates; cloud and on-premises are produced by the same builder."
+  },
+  "pricing": {
+    "title": "Pricing",
+    "lede": "Lex is billed by plan. Plan numbers are configured in the admin backend, never pre-filled or publicly listed; they are fixed when the contract is signed.",
+    "subtitle": "Billing dimensions",
+    "dimensions": {
+      "units": { "name": "Metering units", "value": "Reads / searches per row; generations / evaluations per call" },
+      "quota": { "name": "Included quota", "value": "Quote on request" },
+      "overage": { "name": "Overage unit price", "value": "Quote on request" },
+      "updates": { "name": "Incremental update subscription", "value": "Quote on request" },
+      "deploy": { "name": "Private deployment + annual fee", "value": "Quote on request" }
+    },
+    "note": "When quota runs out the service pauses automatically; quota status and recovery paths are visible in the console. Pricing dimensions are fixed at signing.",
+    "cta": "Contact us for a quote",
+    "contactPending": "Business contact channel being set up"
+  },
+  "docs": {
+    "title": "Private deployment",
+    "lede": "The full Lex stack is privately deployable: one versioned distribution package, produced by a single builder, running independently in your machine room.",
+    "sections": {
+      "deploy": {
+        "name": "Deployment",
+        "desc": "One-click install via single-machine container orchestration; the bundle is versioned and component images are digest-locked; installation is verified by the bundled smoke checks."
+      },
+      "airgap": {
+        "name": "Air-gapped environments",
+        "desc": "After installing from the media alone, with no internet connection, the core capabilities — statute search, similar-case search and contract drafting — remain available."
+      },
+      "upgrade": {
+        "name": "Upgrades",
+        "desc": "Upgrades are reinstall-based; customer data volumes — corpora, generated artifacts and configuration — are fully preserved."
+      },
+      "updates": {
+        "name": "Incremental updates",
+        "desc": "A customer-side scheduled task pulls daily / weekly increment packages from the distribution endpoint (credential-authenticated); each package passes an integrity check, and a failed check means it is never applied."
+      },
+      "offline": {
+        "name": "Offline channel",
+        "desc": "Customers who cannot reach the endpoint receive equivalent incremental content through the offline full-package channel."
+      },
+      "tiers": {
+        "name": "Three data tiers",
+        "desc": "The citation pack (statute library + statute catalog + guiding cases) is the required base; the corpus and judgment packs are optional; the judgment pack (full judgment texts) is excluded by default and customized only after per-project legal review."
+      }
+    },
+    "note": "Hardware requirements and the full delivery documentation ship with the distribution package (placeholder here; no commitments beyond the settled scope)."
+  },
+  "footer": {
+    "tagline": "Legal data · apps · models — vertically integrated, privately deployable end to end.",
+    "linesLabel": "FindData product lines",
+    "lines": {
+      "base": "寻数·壹座 Base",
+      "lex": "寻数·识律 Lex",
+      "wire": "寻数·柏讯 Wire",
+      "facet": "寻数·谦面 Facet",
+      "constellation": "寻数·萬星 Constellation"
+    },
+    "lexCurrent": "This site",
+    "brandSentence": "One · Ten · Hundred · Thousand · Myriad — every star takes its seat",
+    "entriesLabel": "Entries",
+    "entries": {
+      "home": "Official site",
+      "console": "Console",
+      "mcp": "MCP endpoint",
+      "deploy": "Private deployment"
+    },
+    "contactLabel": "Contact",
+    "contactPending": "Business contact channel being set up",
+    "icp": "ICP filing information to be added",
+    "copyright": "© 2026 FindData · Lex"
   },
   "console": {
     "title": "Console",
-    "placeholder": "Console placeholder: tenants, usage, billing and distribution will land here."
+    "placeholder": "Console placeholder: registration, API credentials, usage and billing will land here."
   },
   "admin": {
     "title": "Admin",
     "placeholder": "Admin placeholder: will follow the panel role-gating pattern."
   },
-  "footer": "识律 Lex · fd-lex skeleton"
+  "lang": {
+    "switch": "中文",
+    "ariaLabel": "Switch to Chinese"
+  }
 }

@@ -1,1 +1,66 @@
 @import "tailwindcss";
+
+/* 识律 Lex — statute-book world.
+   Cool paper ground, statute navy owning whole regions (hero/footer),
+   seal vermilion reserved for two meanings only: the brand seal and the
+   truthful "on-prem only" marking. Display voice: Songti-lineage serif. */
+@theme {
+  --font-display: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", Georgia, serif;
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  --color-paper: #f6f7f9;
+  --color-mist: #ebeff4;
+  --color-field: #12305b;
+  --color-field-deep: #0c2140;
+  --color-ink: #1b2a42;
+  --color-ink-soft: #4e5f7b;
+  --color-line: #d9dfe8;
+  --color-line-strong: #b6c1d1;
+  --color-seal: #a6402f;
+  --color-seal-soft: #f4e5e1;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background-color: var(--color-seal-soft);
+  color: var(--color-ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-field);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* The single authored moment: a restrained staged entrance in the hero.
+   Content stays visible by default; reduced-motion users skip it entirely. */
+@media (prefers-reduced-motion: no-preference) {
+  .reveal {
+    animation: reveal 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .reveal-1 { animation-delay: 0.05s; }
+  .reveal-2 { animation-delay: 0.14s; }
+  .reveal-3 { animation-delay: 0.23s; }
+  .reveal-4 { animation-delay: 0.32s; }
+  .reveal-5 { animation-delay: 0.41s; }
+}
+
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}

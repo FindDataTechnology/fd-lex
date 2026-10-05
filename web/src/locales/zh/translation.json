@@ -1,24 +1,188 @@
 {
   "brand": "识律 Lex",
-  "tagline": "法律数据·应用·模型，全栈可私有化",
   "nav": {
-    "home": "首页",
-    "console": "控制台",
-    "admin": "管理后台"
+    "label": "站内导航",
+    "capabilities": "能力目录",
+    "pricing": "定价",
+    "docs": "私有化交付",
+    "console": "控制台"
   },
-  "home": {
-    "intro": "识律（Lex）是面向企业与私有化交付的法律数据平台：法条与类案检索、法律数据分发、领域应用与模型，一站式落地。",
-    "enterConsole": "进入控制台",
-    "enterAdmin": "管理后台",
-    "skeletonNote": "骨架阶段：页面为占位，能力按 lex-platform-v1 变更逐步落地。"
+  "hero": {
+    "titleLine1": "法律数据 · 应用 · 模型",
+    "titleLine2": "垂直整合，全栈可私有化",
+    "lede": "识律（Lex）是寻数旗下的法律科技产品线：法规与案例数据、合同智能应用、自研法律模型与执行底座，整合为同一份版本化交付包——云端与客户机房，同一能力。",
+    "stats": {
+      "wenshu": { "value": "1,050 万", "label": "篇裁判文书" },
+      "catalog": { "value": "32,275 部", "label": "法规目录" },
+      "tools": { "value": "52 个", "label": "合同智能工具" }
+    },
+    "ctaCatalog": "查看能力目录",
+    "ctaConsole": "进入控制台",
+    "diagram": {
+      "caption": "同一份交付包 · 双宿主",
+      "captionSub": "云端 / 客户机房",
+      "model": { "name": "模型", "items": "判官 · 起草", "host": "仅私有化" },
+      "app": { "name": "应用", "items": "LawBench 合同智能", "host": "云端 · 私有化" },
+      "data": { "name": "数据", "items": "法规 · 类案 · 指导案例 · 语料", "host": "云端 · 私有化" }
+    }
+  },
+  "badge": {
+    "both": "双宿主",
+    "privateOnly": "仅私有化"
+  },
+  "capabilities": {
+    "title": "能力目录",
+    "lede": "识律的能力由同一构建器产出、随同一份版本化交付包交付，云端与私有化双宿主。每项能力的宿主可用性如实标注，此外不存在未标注的宿主差异。",
+    "columnCapability": "能力",
+    "columnPoints": "要点",
+    "columnHost": "宿主",
+    "items": {
+      "retrieval": {
+        "name": "法律数据检索",
+        "latin": "Legal Search MCP",
+        "desc": "面向智能体与业务系统的法律检索服务，结果附来源引用。",
+        "points": [
+          "法条语义检索",
+          "类案检索",
+          "指导案例检索",
+          "条级引用解析",
+          "五源语料（随语料包提供）"
+        ],
+        "host": "both",
+        "note": ""
+      },
+      "contract": {
+        "name": "合同智能",
+        "latin": "LawBench",
+        "desc": "法律合同工作台：合同起草与评审。",
+        "points": [
+          "合同起草生成",
+          "合同评审",
+          "52 个领域工具"
+        ],
+        "host": "both",
+        "note": ""
+      },
+      "models": {
+        "name": "自有法律模型",
+        "latin": "Lex Models",
+        "desc": "自研微调模型，评审与起草两条腿。",
+        "points": [
+          "判官 judge_c · 评审",
+          "起草 drafter_a · 起草",
+          "量化产物与对照评测报告随交付包"
+        ],
+        "host": "private",
+        "note": "云端 GPU 推理与模型 API：v1 未提供（规划于 v1.x）"
+      },
+      "distribution": {
+        "name": "私有化交付包",
+        "latin": "Distribution",
+        "desc": "全栈版本化交付：安装、升级、数据三档与增量更新。",
+        "points": [
+          "引用包：法规库 + 法规目录 + 指导案例（必选底座）",
+          "语料包：增五源语料与合同范本（可选）",
+          "文书包：裁判文书全量约 175 GB，按项目法务过审（定制）",
+          "增量更新：日更 / 周更 + 离线整包兜底"
+        ],
+        "host": "private",
+        "note": "仅私有化侧服务"
+      },
+      "api": {
+        "name": "API / MCP 接入",
+        "latin": "API & MCP",
+        "desc": "统一凭据接入法律检索与法律数据工具。",
+        "points": [
+          "MCP 协议端点",
+          "法律数据工具集",
+          "按行 / 按次双单位计量"
+        ],
+        "host": "both",
+        "note": ""
+      }
+    },
+    "footnote": "两宿主的能力差异仅限本目录标注项；云端与客户机房由同一构建器产出。"
+  },
+  "pricing": {
+    "title": "定价",
+    "lede": "识律按套餐计费。套餐数字由后台配置、不预填、不公开标价，于签约时确定。",
+    "subtitle": "计费维度",
+    "dimensions": {
+      "units": { "name": "计量单位", "value": "读取 / 检索按行，生成 / 评测按次" },
+      "quota": { "name": "套餐内额度", "value": "按需报价" },
+      "overage": { "name": "超额单价", "value": "按需报价" },
+      "updates": { "name": "增量更新订阅", "value": "按需报价" },
+      "deploy": { "name": "私有化交付 + 年费", "value": "按需报价" }
+    },
+    "note": "额度耗尽服务自动暂停，控制台可见额度状态与恢复途径；定价维度于签约时确定。",
+    "cta": "联系我们获取报价",
+    "contactPending": "商务联系渠道配置中"
+  },
+  "docs": {
+    "title": "私有化交付",
+    "lede": "识律全栈可私有化：同一构建器产出的版本化交付包，在客户机房独立运行。",
+    "sections": {
+      "deploy": {
+        "name": "部署形态",
+        "desc": "单机容器编排一键安装；交付包版本化，组件镜像以 digest 锁定；安装后经随包冒烟验收。"
+      },
+      "airgap": {
+        "name": "离线环境",
+        "desc": "在仅有安装介质、无外网连接的环境安装后，法条检索、类案检索与合同生成核心能力可用。"
+      },
+      "upgrade": {
+        "name": "升级",
+        "desc": "换版本重装式升级；语料、生成物与配置等客户数据卷在重装后完整保留。"
+      },
+      "updates": {
+        "name": "增量更新",
+        "desc": "客户侧定时任务经分发端点（凭据鉴权）拉取日更 / 周更增量包；增量包经完整性校验，校验不过不应用。"
+      },
+      "offline": {
+        "name": "离线通道",
+        "desc": "无法联网的客户经离线整包通道，获得与在线拉取等价的增量内容。"
+      },
+      "tiers": {
+        "name": "数据三档",
+        "desc": "引用包（法规库 + 法规目录 + 指导案例）为必选底座；语料包与文书包为可选档；文书包（裁判文书全文）默认不含，按项目完成法务审核后定制提供。"
+      }
+    },
+    "note": "部署硬件要求与详细交付文档随交付包发布（此处为占位，不作未定承诺）。"
+  },
+  "footer": {
+    "tagline": "法律数据 · 应用 · 模型，垂直整合、全栈可私有化。",
+    "linesLabel": "寻数产品线",
+    "lines": {
+      "base": "寻数·壹座 Base",
+      "lex": "寻数·识律 Lex",
+      "wire": "寻数·柏讯 Wire",
+      "facet": "寻数·谦面 Facet",
+      "constellation": "寻数·萬星 Constellation"
+    },
+    "lexCurrent": "当前站点",
+    "brandSentence": "壹座之上，萬星闪耀",
+    "entriesLabel": "入口",
+    "entries": {
+      "home": "官网",
+      "console": "控制台",
+      "mcp": "MCP 端点",
+      "deploy": "私有化交付"
+    },
+    "contactLabel": "联系",
+    "contactPending": "商务联系渠道配置中",
+    "icp": "ICP 备案信息待补充",
+    "copyright": "© 2026 寻数（FindData）· 识律 Lex"
   },
   "console": {
     "title": "控制台",
-    "placeholder": "控制台占位页：租户、用量、结算与分发入口将在此落地。"
+    "placeholder": "控制台占位页：注册登录、API 凭据、用量与账单将在此落地。"
   },
   "admin": {
     "title": "管理后台",
     "placeholder": "管理后台占位页：将按 panel 角色门禁模式落地。"
   },
-  "footer": "识律 Lex · fd-lex 骨架"
+  "lang": {
+    "switch": "English",
+    "ariaLabel": "切换到英文"
+  }
 }

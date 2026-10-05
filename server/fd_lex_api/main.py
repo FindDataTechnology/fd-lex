@@ -1,13 +1,18 @@
-"""fd-lex API 服务端骨架。
+"""fd-lex API 服务端。
 
-lex-platform-v1（task 4.1）：结算/分发/后台 API 的落位起点。
-本期只提供最小可运行面：/healthz 健康检查、/api/version 版本自报。
+lex-platform-v1（task 5.1+5.2）：结算/分发/后台 API。
+本期提供：/healthz 健康检查、/api/version 版本自报、
+/internal/metering（双单位计量摄取/消费/查询）、
+/internal/billing（结算触发/三方对账/账本/额度状态/套餐配置）。
 """
 
 import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+from fd_lex_api.billing.routes import router as billing_router
+from fd_lex_api.metering.routes import router as metering_router
 
 app = FastAPI(
     title="fd-lex-api",
@@ -24,6 +29,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# 内部服务面（计量 + 结算账本）；鉴权骨架见 billing/deps.require_internal_token
+app.include_router(metering_router)
+app.include_router(billing_router)
 
 
 def _build_version() -> str:

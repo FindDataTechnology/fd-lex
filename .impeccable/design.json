@@ -1,0 +1,118 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-05T12:00:00+08:00",
+  "title": "Design System: 识律 Lex",
+  "extensions": {
+    "colorMeta": {
+      "statute-navy": {
+        "role": "primary",
+        "displayName": "Statute Navy",
+        "canonical": "#12305b",
+        "tonalRamp": ["#0a1b33", "#12305b", "#1e4175", "#2c5490", "#4a6fa5", "#7491bd", "#a3b7d6", "#d6dfec"]
+      },
+      "seal-vermilion": {
+        "role": "tertiary",
+        "displayName": "Seal Vermilion",
+        "canonical": "#a6402f",
+        "tonalRamp": ["#5a1e14", "#a6402f", "#bc5744", "#cd7160", "#db9284", "#e7b4a9", "#f2d3cb", "#faece8"]
+      },
+      "cool-paper": {
+        "role": "neutral",
+        "displayName": "Cool Paper",
+        "canonical": "#f6f7f9",
+        "tonalRamp": ["#1b2a42", "#4e5f7b", "#6b7a93", "#8b98ac", "#b6c1d1", "#d9dfe8", "#ebeff4", "#f6f7f9"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Page and section headings only; Songti-lineage serif for legal gravity." },
+      "body": { "displayName": "Body", "purpose": "Paragraphs and list points; system CJK sans, 1.8 line-height, ~36 CJK chars measure." },
+      "label": { "displayName": "Label", "purpose": "Register column headers and tracked uppercase Latin subtitles." }
+    },
+    "shadows": [],
+    "motion": [
+      { "name": "reveal", "value": "0.65s cubic-bezier(0.22, 1, 0.36, 1) both", "purpose": "The single authored moment: staged hero entrance; disabled under prefers-reduced-motion." },
+      { "name": "color-transition", "value": "transition-colors 150ms", "purpose": "Hover/focus state changes are color-only, never elevation." }
+    ],
+    "breakpoints": [
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button (on paper)",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Navy fill, white text; the main action on light sections (pricing CTA).",
+      "html": "<button class=\"ds-btn-primary\">联系我们获取报价</button>",
+      "css": ".ds-btn-primary { background: #12305b; color: #ffffff; padding: 10px 20px; font-size: 0.875rem; font-weight: 500; border: none; border-radius: 6px; cursor: pointer; transition: background 0.15s; } .ds-btn-primary:hover { background: #0c2140; } .ds-btn-primary:focus-visible { outline: 2px solid #12305b; outline-offset: 2px; }"
+    },
+    {
+      "name": "Primary Button (on navy)",
+      "kind": "button",
+      "refersTo": "button-primary-on-dark",
+      "description": "White fill, navy text; the main action inside the navy hero.",
+      "html": "<button class=\"ds-btn-primary-dark\">查看能力目录</button>",
+      "css": ".ds-btn-primary-dark { background: #ffffff; color: #12305b; padding: 10px 20px; font-size: 0.875rem; font-weight: 500; border: none; border-radius: 6px; cursor: pointer; transition: background 0.15s; } .ds-btn-primary-dark:hover { background: #ebeff4; } .ds-btn-primary-dark:focus-visible { outline: 2px solid #ffffff; outline-offset: 2px; }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Transparent with hairline border; secondary actions.",
+      "html": "<button class=\"ds-btn-outline\">进入控制台</button>",
+      "css": ".ds-btn-outline { background: transparent; color: #ffffff; padding: 10px 20px; font-size: 0.875rem; border: 1px solid rgba(255,255,255,0.3); border-radius: 6px; cursor: pointer; transition: border-color 0.15s; } .ds-btn-outline:hover { border-color: rgba(255,255,255,0.6); } .ds-btn-outline:focus-visible { outline: 2px solid #ffffff; outline-offset: 2px; }"
+    },
+    {
+      "name": "Host Badge — dual-host",
+      "kind": "chip",
+      "refersTo": "badge-host",
+      "description": "Two filled dots: capability available on cloud and on-premises.",
+      "html": "<span class=\"ds-badge-both\"><svg width=\"14\" height=\"8\" viewBox=\"0 0 14 8\" aria-hidden=\"true\"><circle cx=\"3.5\" cy=\"4\" r=\"2.6\" fill=\"currentColor\"/><circle cx=\"10.5\" cy=\"4\" r=\"2.6\" fill=\"currentColor\"/></svg>双宿主</span>",
+      "css": ".ds-badge-both { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #b6c1d1; color: #4e5f7b; border-radius: 9999px; padding: 2px 10px; font-size: 0.75rem; font-weight: 500; }"
+    },
+    {
+      "name": "Host Badge — on-prem only",
+      "kind": "chip",
+      "refersTo": "badge-host-private",
+      "description": "Dashed hollow dot (cloud absent) + filled dot, vermilion: the honest limitation mark.",
+      "html": "<span class=\"ds-badge-private\"><svg width=\"14\" height=\"8\" viewBox=\"0 0 14 8\" aria-hidden=\"true\"><circle cx=\"3.5\" cy=\"4\" r=\"2.1\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-dasharray=\"1.6 1.4\"/><circle cx=\"10.5\" cy=\"4\" r=\"2.6\" fill=\"currentColor\"/></svg>仅私有化</span>",
+      "css": ".ds-badge-private { display: inline-flex; align-items: center; gap: 6px; border: 1px solid rgba(166,64,47,0.4); background: #f4e5e1; color: #a6402f; border-radius: 9999px; padding: 2px 10px; font-size: 0.75rem; font-weight: 500; }"
+    },
+    {
+      "name": "Capability Ledger Row",
+      "kind": "custom",
+      "refersTo": null,
+      "description": "Signature structure: ruled 12-column register row (name / points / host) instead of cards.",
+      "html": "<div class=\"ds-ledger\"><h3>自有法律模型</h3><p class=\"ds-latin\">LEX MODELS</p><p class=\"ds-desc\">自研微调模型，评审与起草两条腿。</p></div>",
+      "css": ".ds-ledger { border-bottom: 1px solid #d9dfe8; padding: 32px 0; } .ds-ledger h3 { font-family: 'Noto Serif SC', 'Songti SC', serif; font-size: 1.25rem; font-weight: 600; color: #1b2a42; margin: 0; } .ds-latin { font-size: 0.75rem; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: #4e5f7b; margin: 4px 0 0; } .ds-desc { font-size: 0.875rem; line-height: 1.625; color: #4e5f7b; margin: 12px 0 0; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "法典与台账 (The Statute Book and Its Register)",
+    "overview": "The site performs its own deliverable: a legal capability catalog typeset with the discipline of a statute register, where a buyer audits capabilities the way they would audit a legal document. The world is a cool, quiet archive: a statute-navy field opens and closes the page (hero, footer), between them sections sit on cool paper. Depth comes from rules, not shadows — 1px hairlines and 2px strong rules organize every list into a ledger. There is exactly one ornament with a license: the seal vermilion, which appears in two meanings only — the brand seal, and the truthful \"on-prem only\" marking whose visibility is the point.",
+    "keyCharacteristics": [
+      "Statute-navy owns whole regions; body sections stay on cool paper — never scatter navy accents.",
+      "Ledger rows with ruled borders instead of card grids.",
+      "Seal vermilion: brand seal + honest limitation marks, nothing else.",
+      "One authored motion moment (hero reveal); otherwise static and calm."
+    ],
+    "rules": [
+      { "name": "The Two Meanings Rule", "body": "Vermilion appears only as the seal or as an on-prem-only annotation. If vermilion shows up for decoration, the annotation has lost its voice.", "section": "colors" },
+      { "name": "The Field Rule", "body": "Navy is a field color (hero, footer, primary button fill), never a text accent inside body sections.", "section": "colors" },
+      { "name": "The Flat Doctrine", "body": "Zero shadows; structure comes from 2px ink register bounds and 1px hairline row rules. Hover changes color, never elevation.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep body line-length near 36 CJK characters (max-w-[36rem]) and line-height 1.8.",
+      "Do bound registers with a 2px ink rule and divide rows with 1px hairline.",
+      "Do restate both languages with identical key structure — the site is bilingual by contract.",
+      "Do mark every capability's host availability honestly; limitations in vermilion."
+    ],
+    "donts": [
+      "Don't use shadows, gradients, or glass for depth; use rules and tonal fields.",
+      "Don't introduce icon fonts or emoji; draw the few glyphs as SVG.",
+      "Don't publish price numbers, hardware specs, or contact endpoints — quote-on-request chips and labeled placeholders only.",
+      "Don't animate beyond the hero reveal; the register stays still."
+    ]
+  }
+}

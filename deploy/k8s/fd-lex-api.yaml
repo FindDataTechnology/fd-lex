@@ -49,10 +49,13 @@ metadata:
     app.kubernetes.io/name: fd-lex-api
     app.kubernetes.io/part-of: finddata
 spec:
-  type: ClusterIP
+  # NodePort（31886）：cheap-1 宿主 Caddy /api/* 反代需要从宿主可达（wire 31883 同法；
+  # README 曾写 ClusterIP，与 wire 实际形态不符，已对齐现实）。
+  type: NodePort
   selector:
     app.kubernetes.io/name: fd-lex-api
   ports:
     - name: http
       port: 80
       targetPort: http
+      nodePort: 31886

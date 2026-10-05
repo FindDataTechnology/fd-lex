@@ -214,6 +214,7 @@
     "ariaLabel": "切换到英文"
   },
   "console": {
+    "title": "识律控制台",
     "nav": {
       "overview": "总览",
       "credentials": "API 凭据",

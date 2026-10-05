@@ -214,6 +214,7 @@
     "ariaLabel": "Switch to Chinese"
   },
   "console": {
+    "title": "Lex Console",
     "nav": {
       "overview": "Overview",
       "credentials": "API keys",

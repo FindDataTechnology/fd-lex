@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lex-packer"
+version = "0.1.0"
+description = "识律(lex) 交付包构建器：版本化 bundle、组件 digest 锁定、CI 云专属依赖守卫、数据三档打包"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
+
+[project.optional-dependencies]
+# law_db 只读直读（PostgreSQL）；离线打包/测试不需要。
+pg = ["psycopg2-binary>=2.9"]
+# RustFS/S3 拉取 flk 日增量（flk-incremental）；也可用 --local-dir 免依赖。
+s3 = ["boto3>=1.34"]
+# 文书子集（judgment）：wenshu_db + RustFS zstd 正文块。
+wenshu = ["psycopg2-binary>=2.9", "boto3>=1.34", "zstandard>=0.22"]
+dev = ["pytest>=8", "zstandard>=0.22"]
+
+[project.scripts]
+lex-dist = "lex_packer.cli:main"
+
+[tool.setuptools]
+packages = ["lex_packer"]
+
+[tool.setuptools.package-data]
+lex_packer = ["registry_components.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

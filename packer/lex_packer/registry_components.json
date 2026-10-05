@@ -1,0 +1,202 @@
+{
+  "schema": "lex.distribution.component-registry/v1",
+  "note": "交付包组件分类表：packable=可包含在交付包并在客户机房运行；cloud_locked=无法打包的云端专属依赖（必须被包内替代换掉或移出 bundle）。新增组件必须在此登记（未登记=构建红，fail-closed）。",
+  "components": [
+    {
+      "name": "lex-api",
+      "kind": "service",
+      "class": "packable",
+      "substitute": null,
+      "note": "结算/分发/控制台/后台 FastAPI 服务"
+    },
+    {
+      "name": "lex-web",
+      "kind": "service",
+      "class": "packable",
+      "substitute": null,
+      "note": "官网/控制台/交付页前端静态面"
+    },
+    {
+      "name": "legal-search-mcp",
+      "kind": "service",
+      "class": "packable",
+      "substitute": null,
+      "note": "法条/类案/指导案例/条级引用解析 MCP（独立仓，可单独私有化）"
+    },
+    {
+      "name": "lawbench-app",
+      "kind": "service",
+      "class": "packable",
+      "substitute": null,
+      "note": "LawBench 合同智能平台应用栈（HTTP/MCP 契约集成）"
+    },
+    {
+      "name": "yizuo-local-runtime",
+      "kind": "service",
+      "class": "packable",
+      "substitute": null,
+      "note": "壹座本地拓扑运行时（legal packs 宿主）"
+    },
+    {
+      "name": "postgres-pgvector",
+      "kind": "infra",
+      "class": "packable",
+      "substitute": null,
+      "note": "结构化数据 sidecar（法规库/账本/元数据）"
+    },
+    {
+      "name": "qdrant",
+      "kind": "infra",
+      "class": "packable",
+      "substitute": null,
+      "note": "向量检索 sidecar（law_chunks_v2）"
+    },
+    {
+      "name": "elasticsearch",
+      "kind": "infra",
+      "class": "packable",
+      "substitute": null,
+      "note": "全文检索 sidecar"
+    },
+    {
+      "name": "rustfs",
+      "kind": "infra",
+      "class": "packable",
+      "substitute": null,
+      "note": "S3 兼容对象存储 sidecar（文书/语料归档）"
+    },
+    {
+      "name": "redis",
+      "kind": "infra",
+      "class": "packable",
+      "substitute": null,
+      "note": "队列/缓存 sidecar"
+    },
+    {
+      "name": "logto-selfhosted",
+      "kind": "infra",
+      "class": "packable",
+      "substitute": null,
+      "note": "自托管 Logto（客户机房身份），替代 logto-cloud"
+    },
+    {
+      "name": "lex-embed-local",
+      "kind": "model",
+      "class": "packable",
+      "substitute": null,
+      "note": "本地 embedding 权重（Qwen3-Embedding-0.6B）——替代 siliconflow-embedding-api"
+    },
+    {
+      "name": "lex-llm-local",
+      "kind": "model",
+      "class": "packable",
+      "substitute": null,
+      "note": "自托管量化推理路径（vLLM/llama.cpp）——替代云端 LLM API；产物须过 lineage 审计门槛"
+    },
+    {
+      "name": "image-bundle-tar",
+      "kind": "infra",
+      "class": "packable",
+      "substitute": null,
+      "note": "镜像离线包形态（tar + digest 清单）——替代 tcr-image-registry 的在线拉取"
+    },
+    {
+      "name": "laws",
+      "kind": "data",
+      "class": "packable",
+      "substitute": null,
+      "note": "法规库全量（law_db.public.laws）——引用包必选底座"
+    },
+    {
+      "name": "law_catalog",
+      "kind": "data",
+      "class": "packable",
+      "substitute": null,
+      "note": "法规目录（laws 投影）——引用包必选底座"
+    },
+    {
+      "name": "law_chunks_v2",
+      "kind": "data",
+      "class": "packable",
+      "substitute": null,
+      "note": "条级引用底座（law_db.public.law_chunks_v2）——合同起草条级引用硬依赖"
+    },
+    {
+      "name": "guide_cases",
+      "kind": "data",
+      "class": "packable",
+      "substitute": null,
+      "note": "指导案例全文（law_db.public.guide_cases）"
+    },
+    {
+      "name": "legal_documents",
+      "kind": "data",
+      "class": "packable",
+      "substitute": null,
+      "note": "五源法律语料（law_db.public.legal_documents）——语料包组件"
+    },
+    {
+      "name": "contract_templates",
+      "kind": "data",
+      "class": "packable",
+      "substitute": null,
+      "note": "SAMR 示范合同文本（scraw-law-contracts 产物）——语料包组件"
+    },
+    {
+      "name": "judgments_subset",
+      "kind": "data",
+      "class": "packable",
+      "substitute": null,
+      "note": "裁判文书子集（wenshu_db）——文书包组件，出货前置=法务过审记录（tiers 门槛）"
+    },
+    {
+      "name": "laws_daily",
+      "kind": "data",
+      "class": "packable",
+      "substitute": null,
+      "note": "flk 法规每日增量（RustFS laws/incremental/，fd-law-data flk-law-crawl CronJob）——增量 bundle 组件类"
+    },
+    {
+      "name": "siliconflow-embedding-api",
+      "kind": "saas",
+      "class": "cloud_locked",
+      "substitute": "lex-embed-local",
+      "note": "云端 embedding API（fd-lex 开发期默认），不可打包"
+    },
+    {
+      "name": "volcengine-ark-llm",
+      "kind": "saas",
+      "class": "cloud_locked",
+      "substitute": "lex-llm-local",
+      "note": "方舟 LLM 端点（LawBench 既有），不可打包"
+    },
+    {
+      "name": "cloud-gpu-inference",
+      "kind": "saas",
+      "class": "cloud_locked",
+      "substitute": "lex-llm-local",
+      "note": "云端 GPU 推理服务/模型 API —— v1.x 边界（lex-model-assets），v1 不交付"
+    },
+    {
+      "name": "logto-cloud",
+      "kind": "saas",
+      "class": "cloud_locked",
+      "substitute": "logto-selfhosted",
+      "note": "云端 Logto（lex-customers org），客户机房以自托管 Logto 替代"
+    },
+    {
+      "name": "sub2api-billing",
+      "kind": "saas",
+      "class": "cloud_locked",
+      "substitute": null,
+      "note": "云端计费结算（管线/账本在云侧）；客户机房 v1 不含，必须移出 bundle"
+    },
+    {
+      "name": "tcr-image-registry",
+      "kind": "saas",
+      "class": "cloud_locked",
+      "substitute": "image-bundle-tar",
+      "note": "腾讯云 TCR 镜像通道，离线交付以镜像 tar 替代"
+    }
+  ]
+}

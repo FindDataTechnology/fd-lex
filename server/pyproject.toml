@@ -34,6 +34,7 @@ packages = [
     "fd_lex_api.billing",
     "fd_lex_api.console_api",
     "fd_lex_api.admin_api",
+    "fd_lex_api.distribution",
 ]
 
 [tool.pytest.ini_options]

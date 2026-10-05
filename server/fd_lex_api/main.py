@@ -22,6 +22,7 @@ from fd_lex_api.admin_api.routes import router as admin_router
 from fd_lex_api.billing.routes import router as billing_router
 from fd_lex_api.config import get_settings
 from fd_lex_api.console_api.routes import router as console_router
+from fd_lex_api.distribution.routes import router as distribution_router
 from fd_lex_api.metering.routes import router as metering_router
 
 
@@ -72,6 +73,8 @@ app.include_router(billing_router)
 app.include_router(console_router)
 # 运营后台面（4.4）：内部令牌或 Logto 管理员角色
 app.include_router(admin_router)
+# 交付包分发面（6.3）：manifest 列表/详情、pack 流式下载（Range）、sha256 校验
+app.include_router(distribution_router)
 
 
 def _build_version() -> str:

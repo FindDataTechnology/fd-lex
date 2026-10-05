@@ -25,6 +25,15 @@
   （调价不发版）、账本、用量分轨、凭据操作留痕。
   鉴权 = `X-Admin-Token`（= `INTERNAL_API_TOKEN`，未配置 fail-closed）**或**
   Logto ID token 的 roles 命中 `ADMIN_ROLES`（默认 `lex-admin`）。
+- `/api/distribution`（任务 6.3，交付包分发面，`fd_lex_api/distribution/`）：
+  `GET /manifests`（bundle 清单，可按 tier/form 过滤）、
+  `GET /manifests/{bundle_id}`（manifest 详情）、
+  `GET /packs/{bundle_id}`（pack 流式下载，支持 Range 断点续传/HEAD/If-Range）、
+  `GET /packs/{bundle_id}/sha256`（每包 sha256 校验；`?verify=1` 重算比对，
+  不一致 409 拒绝背书——坏包不应用）、`GET /catalog`（双宿主能力目录与如实差异）。
+  数据源 = `DISTRIBUTION_ROOT` 下 packer 产出的 bundle 目录树（只读，路径白名单
+  防穿越）；鉴权 = `DISTRIBUTION_API_TOKEN` bearer（未配置 fail-closed 403；
+  **客户级凭据 wgk- 接 Logto 为后续项**，见 `distribution/deps.py`）。
 - CORS 骨架期全开（生产同源不经 CORS；接入网关后按域名收敛）
 
 ## 控制台登录的外部配置（主代理/运维）
@@ -59,8 +68,11 @@ sub2api 幂等结算 + 两档预警 80%/95%）；规格见
 ## 测试
 
 ```sh
-.venv/bin/pytest          # 98 passed（含 /api/console 与 /api/admin 离线测试）
+.venv/bin/pytest          # 118 passed（98 既有 + 20 分发面离线测试）
 ```
 
 测试纪律：sub2api / registry 一律换假件（`dependency_overrides` 或内存假件），
-绝不真实调用生产设施；控制台登录用本地 EC 密钥对自签 ID token 验证真校验路径。
+绝不真实调用生产设施；控制台登录用本地 EC 密钥对自签 ID token 验证真校验路径；
+分发面测试用 tmp 合成 pack 目录 + 仓内 packer 真实产物的跨模块契约用例
+（引用包 full、结构增量、**flk 日增量 incremental** 三种形态：下载完整性 / Range /
+sha256 verify=1 / 鉴权 fail-closed）。

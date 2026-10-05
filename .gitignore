@@ -32,3 +32,10 @@ web/dist/
 # Build caches
 .vite/
 tsconfig.tsbuildinfo
+
+# Delivery pack artifacts (packer output; evidence dir, never committed)
+packer/dist/
+
+# Local dev databases (server 本地运行产生，不入库)
+server/*.db
+server/*.db-journal

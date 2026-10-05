@@ -1,0 +1,54 @@
+# 交付包构建器 CI —— 云专属依赖守卫 + packer 测试（lex-platform-v1 6.1）
+#
+# 与 image.yml 分离：本工作流只跑离线门禁（不构建/不推镜像，不碰 deploy 清单）。
+# 守卫语义见 packer/lex_packer/guard.py：
+#   - bundle 组件必须全部登记（未登记=红）；
+#   - cloud_locked（无法打包的云端专属依赖）出现在 bundle=红，并指名修复方向。
+name: packer
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packer/**"
+      - ".github/workflows/packer.yml"
+  pull_request:
+    paths:
+      - "packer/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packer
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install lex-packer
+        run: pip install -e '.[dev]'
+
+      - name: Offline tests (manifest / guard / gate / incremental)
+        run: pytest -q
+
+      - name: Cloud-locked dependency guard (bundle component set)
+        env:
+          BUNDLE_COMPONENTS: >-
+            lex-api,lex-web,legal-search-mcp,lawbench-app,yizuo-local-runtime,postgres-pgvector,qdrant,elasticsearch,rustfs,redis,logto-selfhosted,lex-embed-local,lex-llm-local,image-bundle-tar,laws,law_catalog,law_chunks_v2,guide_cases
+        run: python -m lex_packer guard --components "$BUNDLE_COMPONENTS"
+
+      - name: Guard self-check rejects a cloud-locked dependency (must exit 1)
+        run: |
+          if python -m lex_packer guard --components lex-api,volcengine-ark-llm; then
+            echo "guard failed to reject a cloud_locked component" >&2
+            exit 1
+          fi
+          echo "guard correctly rejected volcengine-ark-llm (naming fix direction)"

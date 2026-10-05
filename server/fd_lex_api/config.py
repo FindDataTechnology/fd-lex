@@ -48,6 +48,13 @@ class Settings(BaseSettings):
     metering_poll_limit: int = 500
     metering_auto_create_tables: bool = True
 
+    # --- 分发面（/api/distribution，lex-platform-v1 6.3） --------------------
+    # 交付包（Distribution）目录：packer 产出的 bundle 目录树（只读扫描）。
+    distribution_root: str = "./distribution_packs"
+    # 分发面 bearer 令牌；未配置 fail-closed（403）。
+    # v1 客户侧定时任务共用该令牌；客户级凭据（wgk-）接 Logto 后演进（如实标注为后续项）。
+    distribution_api_token: str | None = None
+
     # --- 控制台（/console）与运营后台（/admin）面 ---------------------------
     # Logto OIDC：控制台 SPA 走 authorization code + PKCE，服务端只做 ID token
     # 校验（JWKS/iss/aud）与身份读取——不落任何 Logto 客户端密钥。
@@ -108,6 +115,8 @@ class Settings(BaseSettings):
             "registry_mongo_configured": bool(self.registry_mongo_uri and self.registry_mongo_db),
             "registry_mongo_collection": self.registry_mongo_collection,
             "metering_poll_limit": self.metering_poll_limit,
+            "distribution_root": self.distribution_root,
+            "distribution_api_token_configured": bool(self.distribution_api_token),
             "logto_configured": bool(self.logto_oidc_base() and self.logto_client_id),
             "logto_issuer": self.logto_oidc_base(),
             "logto_client_id_configured": bool(self.logto_client_id),

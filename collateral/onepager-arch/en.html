@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<!-- Lex architecture one-pager (EN) · change lex-marketing-kit · all numbers trace to collateral/numbers.md -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>FindData Lex — Architecture &amp; Private Deployment</title>
+<style>
+  @page { size: A4; margin: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { background: #fff; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif; color: #1c2340; }
+  .page { width: 210mm; height: 297mm; padding: 8mm 12mm 7mm; display: flex; flex-direction: column; }
+  .band { background: #0b1020; color: #e6ebff; border-radius: 4mm; padding: 4.6mm 8mm 4.2mm; }
+  .band .eyebrow { font-size: 8.5pt; letter-spacing: .18em; color: #9aa6d0; }
+  .band .eyebrow b { color: #38e1c8; font-weight: 600; }
+  .band h1 { font-size: 19pt; font-weight: 700; margin-top: 2.2mm; }
+  .band p.sub { margin-top: 1.6mm; font-size: 9pt; color: #c3ccef; }
+  h2 { font-size: 11.5pt; color: #111730; margin: 2.4mm 0 1.4mm; display: flex; align-items: center; gap: 2.4mm; }
+  h2::before { content: ""; width: 3.2mm; height: 3.2mm; border-radius: 1mm; background: #38e1c8; display: inline-block; }
+  .cols { display: flex; gap: 4mm; }
+  .card { flex: 1; border: .3mm solid #dfe4f2; border-radius: 3mm; padding: 2.4mm 4.2mm; }
+  .card h3 { font-size: 9.4pt; color: #111730; margin-bottom: 1.4mm; }
+  .card ul { list-style: none; }
+  .card li { font-size: 8.2pt; line-height: 1.4; padding-left: 3.6mm; position: relative; margin-bottom: 0.9mm; color: #2a3358; }
+  .card li::before { content: ""; position: absolute; left: 0; top: 1.8mm; width: 1.6mm; height: 1.6mm; border-radius: .4mm; background: #4a5ca8; }
+  .card li b { color: #111730; }
+  .num { font-weight: 700; color: #0b1020; }
+  .stack { border: .3mm solid #dfe4f2; border-radius: 3mm; }
+  .layer { padding: 1.7mm 4.5mm; border-bottom: .3mm solid #e6eaf6; display: flex; justify-content: space-between; align-items: baseline; gap: 4mm; }
+  .layer:last-child { border-bottom: none; border-radius: 0 0 3mm 3mm; }
+  .layer:first-child { border-radius: 3mm 3mm 0 0; }
+  .layer .n { font-size: 9.4pt; font-weight: 700; color: #111730; white-space: nowrap; }
+  .layer .d { font-size: 7.9pt; color: #5a6484; text-align: right; }
+  .layer.core { background: #0b1020; }
+  .layer.core .n { color: #e6ebff; }
+  .layer.core .d { color: #9aa6d0; }
+  .layer.data { background: #f3f5fc; }
+  .vx { display: inline-block; font-size: 7.2pt; font-weight: 700; color: #0b1020; background: #ffe9a8; border-radius: 1mm; padding: 0 1.4mm; margin-left: 1.6mm; vertical-align: 1px; }
+  .cta { margin-top: 2.6mm; background: linear-gradient(90deg, #0b1020, #1b2348); color: #e6ebff; border-radius: 3mm; padding: 4mm 5mm; display: flex; justify-content: space-between; align-items: center; }
+  .cta .t { font-size: 10.5pt; font-weight: 600; }
+  .cta .t span { color: #38e1c8; }
+  .cta .u { font-size: 8.8pt; color: #c3ccef; }
+  .cta .u b { color: #fff; font-weight: 600; }
+  footer { margin-top: auto; padding-top: 1.8mm; border-top: .2mm solid #e3e7f4; display: flex; justify-content: space-between; font-size: 6.8pt; color: #8a92b4; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="band">
+    <div class="eyebrow">FIND DATA · <b>LEX</b> · TECHNICAL OVERVIEW</div>
+    <h1>Architecture &amp; Private Deployment</h1>
+    <p class="sub">Live platform shape, delivery-package composition, data governance, deployment roadmap. Planned capabilities are labelled v1.x.</p>
+  </div>
+
+  <h2>Live platform shape (one domain, four entries)</h2>
+  <div class="cols">
+    <div class="card">
+      <h3>Entries &amp; identity</h3>
+      <ul>
+        <li><b>Four entries</b>: website &amp; capability catalog / customer console (sign-up → mint a long-lived key → usage &amp; billing) / MCP API / delivery page</li>
+        <li><b>Tenant isolation</b>: a dedicated customer identity organization with minimal scope — a customer key only sees the services it purchased; out-of-scope calls are rejected (403)</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Services &amp; metering</h3>
+      <ul>
+        <li><b>Legal retrieval MCP</b>: <span class="num">10</span> tools [N7] — statutes / similar cases / guiding cases; every result carries provenance (source database, stable identifier, as-of time)</li>
+        <li><b>Dual-unit metering</b>: reads by row, generation by call; the settlement ledger is authoritative with three-way reconciliation</li>
+        <li><b>Fail-closed</b>: hard stop on exhausted quota (preflight rejection, 402); warnings archived at the <span class="num">80%</span> and <span class="num">95%</span> tiers [N16]</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>Delivery-package composition (cloud and customer machine room = two hosts of the same deliverable)<span class="vx">package: v1.x planned</span></h2>
+  <div class="stack">
+    <div class="layer core"><span class="n">Base local runtime</span><span class="d">the local data-platform foundation providing the runtime and shared catalog plane</span></div>
+    <div class="layer"><span class="n">Contract intelligence stack</span><span class="d">assembly-based drafting / triple review / rubric scoring, 52 MCP tools [N14]</span></div>
+    <div class="layer"><span class="n">Legal retrieval MCP service</span><span class="d">statutes / similar cases / guiding cases under a full provenance contract</span></div>
+    <div class="layer data"><span class="n">Three data tiers</span><span class="d">reference package (statutes + article-level citations + guiding cases; mandatory base) · corpus package (five-source corpora + templates) · judgments package (full corpus, per-project legal review)</span></div>
+    <div class="layer"><span class="n">Model capability <span class="vx">v1.x planned</span></span><span class="d">private-side inference path is on the roadmap; model files are not shipped with the package before it lands</span></div>
+    <div class="layer"><span class="n">Infrastructure sidecars</span><span class="d">vector retrieval, authentication, metering audit and supporting components</span></div>
+  </div>
+
+  <h2>Data governance &amp; updates</h2>
+  <div class="cols">
+    <div class="card">
+      <h3>Scale &amp; tiers</h3>
+      <ul>
+        <li><span class="num">32,296</span> laws and regulations [N1] · <span class="num">364,916</span> statute chunks [N2] · <span class="num">30,151</span> authoritative documents [N6]</li>
+        <li>Court judgments <span class="num">37,001,012</span> [N4]; the full judgments package is approx. <span class="num">175</span>GB [N15], delivered after per-project legal review</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Update mechanics</h3>
+      <ul>
+        <li><b>Pull-based increments</b>: customers pull daily / weekly updates from distribution endpoints on a schedule — credential-authenticated, sha256-verified, resumable</li>
+        <li><b>Offline full-package fallback</b>: content-equivalent to the online channel, built for air-gapped networks</li>
+        <li><b>Versioned builds</b>: packages are versioned with component digests locked; injecting cloud-only dependencies fails the build</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>Deployment roadmap</h2>
+  <div class="cols">
+    <div class="card">
+      <h3>Install &amp; upgrade <span class="vx">v1.x planned</span></h3>
+      <ul>
+        <li>Single-machine docker compose install; data lands in local volumes</li>
+        <li>Reinstall-style upgrades: version advances preserve customer data (corpora / artifacts / configuration)</li>
+        <li>Air-gapped operation supported for reference / corpus package scenarios</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Where things stand today</h3>
+      <ul>
+        <li>The cloud host is live: entries, console, metering &amp; settlement, legal retrieval — the full chain is in service</li>
+        <li>Private delivery packages are scheduled per customer engagement; scope and progress follow the contract and the delivery page</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="cta">
+    <div class="t">Deep-dive &amp; assessment: <span>on request (Contact us)</span></div>
+    <div class="u"><b>lex.finddatatech.cloud</b> · delivery page /deploy</div>
+  </div>
+
+  <footer>
+    <div>www.finddatatech.cloud · lex.finddatatech.cloud</div>
+    <div>Figures: measured at the database as of 2026-10, see docs at lex.finddatatech.cloud; v1.x = planned capability, subject to actual delivery.</div>
+  </footer>
+
+</div>
+</body>
+</html>

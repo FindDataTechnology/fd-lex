@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<!-- 识律架构与私有化一页纸（中文）· change lex-marketing-kit · 数字均溯源 collateral/numbers.md -->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>寻数·识律 Lex — 架构与私有化部署</title>
+<style>
+  @page { size: A4; margin: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { background: #fff; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; color: #1c2340; }
+  .page { width: 210mm; height: 297mm; padding: 9mm 12mm 8mm; display: flex; flex-direction: column; }
+  .band { background: #0b1020; color: #e6ebff; border-radius: 4mm; padding: 5.5mm 8mm 5mm; }
+  .band .eyebrow { font-size: 8.5pt; letter-spacing: .18em; color: #9aa6d0; }
+  .band .eyebrow b { color: #38e1c8; font-weight: 600; }
+  .band h1 { font-size: 20pt; font-weight: 700; margin-top: 2.2mm; }
+  .band p.sub { margin-top: 2mm; font-size: 10pt; color: #c3ccef; }
+  h2 { font-size: 11.5pt; color: #111730; margin: 3.8mm 0 2mm; display: flex; align-items: center; gap: 2.4mm; }
+  h2::before { content: ""; width: 3.2mm; height: 3.2mm; border-radius: 1mm; background: #38e1c8; display: inline-block; }
+  .cols { display: flex; gap: 4mm; }
+  .card { flex: 1; border: .3mm solid #dfe4f2; border-radius: 3mm; padding: 3.2mm 4.2mm; }
+  .card h3 { font-size: 9.6pt; color: #111730; margin-bottom: 1.8mm; }
+  .card ul { list-style: none; }
+  .card li { font-size: 8.4pt; line-height: 1.45; padding-left: 3.6mm; position: relative; margin-bottom: 1.1mm; color: #2a3358; }
+  .card li::before { content: ""; position: absolute; left: 0; top: 1.8mm; width: 1.6mm; height: 1.6mm; border-radius: .4mm; background: #4a5ca8; }
+  .card li b { color: #111730; }
+  .num { font-weight: 700; color: #0b1020; }
+  .stack { border: .3mm solid #dfe4f2; border-radius: 3mm; }
+  .layer { padding: 2.2mm 4.5mm; border-bottom: .3mm solid #e6eaf6; display: flex; justify-content: space-between; align-items: baseline; gap: 4mm; }
+  .layer:last-child { border-bottom: none; border-radius: 0 0 3mm 3mm; }
+  .layer:first-child { border-radius: 3mm 3mm 0 0; }
+  .layer .n { font-size: 9.4pt; font-weight: 700; color: #111730; white-space: nowrap; }
+  .layer .d { font-size: 8.2pt; color: #5a6484; text-align: right; }
+  .layer.core { background: #0b1020; }
+  .layer.core .n { color: #e6ebff; }
+  .layer.core .d { color: #9aa6d0; }
+  .layer.data { background: #f3f5fc; }
+  .vx { display: inline-block; font-size: 7.2pt; font-weight: 700; color: #0b1020; background: #ffe9a8; border-radius: 1mm; padding: 0 1.4mm; margin-left: 1.6mm; vertical-align: 1px; }
+  .foot { margin-top: 3.2mm; background: #f3f5fc; border-radius: 3mm; padding: 3.4mm 4.5mm; font-size: 8.6pt; line-height: 1.55; color: #2a3358; }
+  .foot b { color: #111730; }
+  .cta { margin-top: 3.2mm; background: linear-gradient(90deg, #0b1020, #1b2348); color: #e6ebff; border-radius: 3mm; padding: 4mm 5mm; display: flex; justify-content: space-between; align-items: center; }
+  .cta .t { font-size: 10.5pt; font-weight: 600; }
+  .cta .t span { color: #38e1c8; }
+  .cta .u { font-size: 8.8pt; color: #c3ccef; }
+  .cta .u b { color: #fff; font-weight: 600; }
+  footer { margin-top: auto; padding-top: 2.5mm; border-top: .2mm solid #e3e7f4; display: flex; justify-content: space-between; font-size: 6.8pt; color: #8a92b4; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="band">
+    <div class="eyebrow">寻数 FIND DATA · <b>识律 LEX</b> · 技术概览</div>
+    <h1>架构与私有化部署</h1>
+    <p class="sub">面向技术决策者：在役形态、交付包构成、数据治理与部署路线；规划能力均以 v1.x 标注。</p>
+  </div>
+
+  <h2>在役平台形态（单域四入口）</h2>
+  <div class="cols">
+    <div class="card">
+      <h3>入口与身份</h3>
+      <ul>
+        <li><b>单域四入口</b>：官网与能力目录 / 客户控制台（注册→铸造长命密钥→用量账单）/ MCP API / 交付页</li>
+        <li><b>租户隔离</b>：独立客户身份组织，最小 scope——客户密钥仅可见所购服务，越界调用拒绝（403）</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>服务与计量</h3>
+      <ul>
+        <li><b>法律检索 MCP</b>：<span class="num">10</span> 个工具 [N7]——法条 / 类案 / 指导案例检索，每个结果带 provenance（来源库、稳定标识、口径时间）</li>
+        <li><b>双单位计量</b>：读取类按行、生成类按次；结算账本权威，三方对账一致</li>
+        <li><b>fail-closed</b>：额度耗尽硬停（预检拒绝 402），<span class="num">80%</span> / <span class="num">95%</span> 两档预警留档 [N16]</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>交付包构成（云端与客户机房 = 同一交付物的两种宿主）<span class="vx">交付包整体 v1.x 规划</span></h2>
+  <div class="stack">
+    <div class="layer core"><span class="n">壹座本地运行时</span><span class="d">本地数据平台底座，提供运行时与共享目录面</span></div>
+    <div class="layer"><span class="n">合同智能应用栈</span><span class="d">装配式生成 / 三重评审 / 评分回归，52 个 MCP 工具 [N14]</span></div>
+    <div class="layer"><span class="n">法律检索 MCP 服务</span><span class="d">法条 / 类案 / 指导案例，provenance 契约全覆盖</span></div>
+    <div class="layer data"><span class="n">数据三档</span><span class="d">引用包（法规+条级引用+指导案例，必选底座）· 语料包（五源语料+范本）· 文书包（全量，按项目法务过审）</span></div>
+    <div class="layer"><span class="n">模型能力 <span class="vx">v1.x 规划</span></span><span class="d">私有侧推理路径在规划中；上线前不随交付包提供模型文件</span></div>
+    <div class="layer"><span class="n">基础设施 sidecars</span><span class="d">向量检索、鉴权、计量审计等配套组件</span></div>
+  </div>
+
+  <h2>数据治理与更新</h2>
+  <div class="cols">
+    <div class="card">
+      <h3>规模与分层</h3>
+      <ul>
+        <li>法律法规 <span class="num">32,296</span> 部 [N1] · 法条切片约 <span class="num">36.5</span> 万 [N2] · 权威语料 <span class="num">30,151</span> 件 [N6]</li>
+        <li>裁判文书约 <span class="num">3,700</span> 万篇 [N4]，全量文书包约 <span class="num">175</span>GB [N15]，按项目法务过审后交付</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>更新机制</h3>
+      <ul>
+        <li><b>增量拉模式</b>：客户侧定时经分发端点拉取日更 / 周更，凭据鉴权 + sha256 完整性校验 + 断点续传</li>
+        <li><b>离线整包兜底</b>：与在线通道内容等价，适配隔离网络</li>
+        <li><b>版本化构建</b>：交付包按版本组织，组件 digest 锁定，云专属依赖注入即构建失败</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>部署路线</h2>
+  <div class="cols">
+    <div class="card">
+      <h3>安装与升级 <span class="vx">v1.x 规划</span></h3>
+      <ul>
+        <li>单机 docker compose 安装，数据落在本地卷</li>
+        <li>重装式升级：版本推进保留客户数据（语料 / 生成物 / 配置）</li>
+        <li>引用包 / 语料包场景支持无外网运行</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>现在的起点</h3>
+      <ul>
+        <li>云端宿主已在役：入口、控制台、计量结算、法律检索全链可用</li>
+        <li>私有化交付包按客户项目排期交付，范围与进度以合同与交付页为准</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="cta">
+    <div class="t">架构细谈与部署评估：<span>按需安排（Contact us）</span></div>
+    <div class="u"><b>lex.finddatatech.cloud</b> · 交付页 /deploy</div>
+  </div>
+
+  <footer>
+    <div>www.finddatatech.cloud · lex.finddatatech.cloud</div>
+    <div>数字口径：库侧实测截至 2026-10，详见 lex.finddatatech.cloud 文档；v1.x = 规划能力，以实际交付为准。</div>
+  </footer>
+
+</div>
+</body>
+</html>

@@ -61,6 +61,9 @@ function Layout({ children }: { children: ReactNode }) {
               <AnchorLink hash="pricing" className="text-ink-soft transition-colors hover:text-ink">
                 {t('nav.pricing')}
               </AnchorLink>
+              <NavLink to="/docs" className="text-ink-soft transition-colors hover:text-ink">
+                {t('nav.guides')}
+              </NavLink>
               <NavLink to="/deploy" className="text-ink-soft transition-colors hover:text-ink">
                 {t('nav.docs')}
               </NavLink>

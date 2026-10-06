@@ -4,6 +4,7 @@
     "label": "Site navigation",
     "capabilities": "Capabilities",
     "pricing": "Pricing",
+    "guides": "Docs",
     "docs": "Private Deployment",
     "console": "Console"
   },
@@ -184,6 +185,18 @@
       }
     },
     "note": "Hardware requirements and the full delivery documentation ship with the distribution package (placeholder here; no commitments beyond the settled scope)."
+  },
+  "docHub": {
+    "eyebrow": "Docs",
+    "indexTitle": "Lex documentation",
+    "indexLede": "Integration guides and manuals, served in the current language; the Chinese and English versions are maintained in parity.",
+    "read": "Read more →",
+    "backToIndex": "Back to docs index",
+    "empty": "No documents yet.",
+    "notFound": {
+      "title": "Document not found",
+      "lede": "This document does not exist or has not been published yet; pick another one from the docs index."
+    }
   },
   "footer": {
     "tagline": "Legal data · apps · models — vertically integrated, privately deployable end to end.",

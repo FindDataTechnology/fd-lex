@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<!-- Lex business one-pager (EN) · change lex-marketing-kit · all numbers trace to collateral/numbers.md -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>FindData Lex — Legal Data · Intelligent Applications · Domain Models</title>
+<style>
+  @page { size: A4; margin: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { background: #fff; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif; color: #1c2340; }
+  .page { width: 210mm; height: 297mm; padding: 8mm 12mm 14mm; position: relative; display: flex; flex-direction: column; }
+  .band { background: #0b1020; color: #e6ebff; border-radius: 4mm; padding: 5mm 8mm 4.5mm; }
+  .band .eyebrow { font-size: 8.5pt; letter-spacing: .18em; color: #9aa6d0; }
+  .band .eyebrow b { color: #38e1c8; font-weight: 600; }
+  .band h1 { font-size: 18pt; font-weight: 700; margin-top: 2.2mm; letter-spacing: .01em; }
+  .band h1 .lex { color: #6aa6ff; }
+  .band p.sub { margin-top: 1.6mm; font-size: 9.5pt; color: #c3ccef; }
+  h2 { font-size: 11.5pt; color: #111730; margin: 3.6mm 0 2mm; display: flex; align-items: center; gap: 2.4mm; }
+  h2::before { content: ""; width: 3.2mm; height: 3.2mm; border-radius: 1mm; background: #38e1c8; display: inline-block; }
+  .cols { display: flex; gap: 4mm; }
+  .card { flex: 1; border: .3mm solid #dfe4f2; border-radius: 3mm; padding: 3.2mm 4.2mm; }
+  .card.wide { flex: 1.6; }
+  .card h3 { font-size: 9.5pt; color: #111730; margin-bottom: 2mm; }
+  .card ul { list-style: none; }
+  .card li { font-size: 8.5pt; line-height: 1.45; padding-left: 3.6mm; position: relative; margin-bottom: 1.2mm; color: #2a3358; }
+  .card li::before { content: ""; position: absolute; left: 0; top: 1.9mm; width: 1.6mm; height: 1.6mm; border-radius: .4mm; background: #4a5ca8; }
+  .card li b { color: #111730; }
+  .num { font-weight: 700; color: #0b1020; }
+  table.metrics { width: 100%; border-collapse: collapse; margin-top: 1mm; }
+  table.metrics th { font-size: 8.2pt; color: #5a6484; font-weight: 500; text-align: left; padding: 1.4mm 2mm; border-bottom: .3mm solid #dfe4f2; }
+  table.metrics td { font-size: 9pt; padding: 1.4mm 2mm; border-bottom: .2mm solid #eef1f9; }
+  table.metrics td.v { font-weight: 700; color: #0b1020; }
+  table.metrics td.base { color: #5a6484; }
+  .start { display: flex; gap: 4mm; margin-top: 1mm; }
+  .way { flex: 1; background: #f3f5fc; border-radius: 3mm; padding: 2.6mm 4mm; }
+  .way h3 { font-size: 9.4pt; color: #111730; margin-bottom: 1.4mm; }
+  .way p { font-size: 8.2pt; line-height: 1.45; color: #2a3358; }
+  .way code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 7.8pt; color: #0b1020; background: #e6ebff; border-radius: 1mm; padding: 0 1mm; }
+  .cta { margin-top: 3.2mm; background: linear-gradient(90deg, #0b1020, #1b2348); color: #e6ebff; border-radius: 3mm; padding: 3.2mm 5mm; display: flex; justify-content: space-between; align-items: center; }
+  .cta .t { font-size: 10.5pt; font-weight: 600; }
+  .cta .t span { color: #38e1c8; }
+  .cta .u { font-size: 8.8pt; color: #c3ccef; }
+  .cta .u b { color: #fff; font-weight: 600; }
+  .lines { margin-top: 3.4mm; display: flex; align-items: center; gap: 2.2mm; }
+  .lines .lbl { font-size: 7.5pt; color: #5a6484; letter-spacing: .12em; }
+  .pill { font-size: 7.8pt; padding: 1.1mm 2.6mm; border-radius: 5mm; border: .3mm solid #dfe4f2; color: #5a6484; white-space: nowrap; }
+  .pill.on { background: #0b1020; color: #fff; border-color: #0b1020; font-weight: 600; }
+  footer { position: absolute; left: 12mm; right: 12mm; bottom: 5mm; padding-top: 2mm; border-top: .2mm solid #e3e7f4; display: flex; justify-content: space-between; font-size: 6.8pt; color: #8a92b4; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="band">
+    <div class="eyebrow">FIND DATA · <b>LEX</b></div>
+    <h1>Legal Data · Intelligent Applications · Domain Models <span class="lex">— fully self-hostable</span></h1>
+    <p class="sub">The vertical platform for the legal industry: contract intelligence, legal retrieval, judgments and authoritative corpora — one platform, directly callable by AI agents.</p>
+  </div>
+
+  <h2>Contract intelligence — assembled from a clause library, not invented</h2>
+  <div class="cols">
+    <div class="card">
+      <h3>Assembly-based drafting</h3>
+      <ul>
+        <li>Rooted in the <span class="num">19</span> typical named contracts of the Civil Code [N13] and the practical contract taxonomy</li>
+        <li>A clause library grounded in <span class="num">5,000+</span> official template contracts [N12] — every draft is traceable</li>
+        <li>Pick contract type, stance and scenario; drafts render to Markdown / Word / PDF</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Triple AI review</h3>
+      <ul>
+        <li>Legal, commercial and completeness dimensions run in parallel</li>
+        <li>Feedback precise to the individual clause</li>
+        <li>Criterion-by-criterion rubric scoring, with version comparison and regression testing</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Statute grounding &amp; agent access</h3>
+      <ul>
+        <li>Drafts can carry article-level citations retrieved from <span class="num">32,296</span> PRC laws and regulations [N1]</li>
+        <li><span class="num">52</span> MCP tools expose the full capability [N14] — agents draft and review inside a conversation</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>The legal data foundation — one semantic layer; agents ask by concept</h2>
+  <div class="cols">
+    <div class="card">
+      <h3>Scale (measured at the database)</h3>
+      <ul>
+        <li><span class="num">32,296</span> PRC laws and regulations, with article-level citation resolution [N1]</li>
+        <li><span class="num">37,001,012</span> court judgments [N3][N4]</li>
+        <li><span class="num">30,151</span> authoritative documents: regulations / treaties / supervisory rules / party regulations and more [N6]</li>
+        <li><span class="num">278</span> SPC guiding cases plus 15 batch notices [N5]</li>
+        <li><span class="num">364,916</span> statute chunks for semantic retrieval [N2]</li>
+      </ul>
+    </div>
+    <div class="card wide">
+      <h3>Purpose-built legal models (built into the platform; head-to-head on our own evaluation set)</h3>
+      <table class="metrics">
+        <tr><th>Metric</th><th>General baseline</th><th>Lex legal model</th></tr>
+        <tr><td>Review accuracy</td><td class="base">10.9%</td><td class="v">84.4% [N8]</td></tr>
+        <tr><td>Structured-output validity</td><td class="base">38.5%</td><td class="v">100% [N9]</td></tr>
+        <tr><td>Per-item latency</td><td class="base">27.3 s</td><td class="v">10.2 s [N10]</td></tr>
+      </table>
+      <ul style="margin-top:2mm">
+        <li>Separate legs for drafting and review; the baseline's failure modes (generic reasoning, no valid structure) disappear after fine-tuning [N11]</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>Three ways to start</h2>
+  <div class="start">
+    <div class="way">
+      <h3>Hosted platform</h3>
+      <p>Sign up → mint a long-lived key in the console → call immediately. Usage and billing are visible in real time.</p>
+    </div>
+    <div class="way">
+      <h3>Agent access</h3>
+      <p>Standard MCP protocol; one authentication covers everything. Endpoint <code>lex.finddatatech.cloud/mcp</code>, works with mainstream MCP clients.</p>
+    </div>
+    <div class="way">
+      <h3>Private deployment</h3>
+      <p>A full-stack delivery package for your own machine room — data never leaves your domain. Planned capabilities are labelled v1.x; see the architecture sheet.</p>
+    </div>
+  </div>
+
+  <div class="cta">
+    <div class="t">Verifiable today: <span>real data, real calls, reproducible numbers</span></div>
+    <div class="u"><b>lex.finddatatech.cloud</b> · Contact us for pricing</div>
+  </div>
+
+  <div class="lines">
+    <span class="lbl">FIND DATA LINES</span>
+    <span class="pill">Base</span>
+    <span class="pill on">Lex</span>
+    <span class="pill">Wire</span>
+    <span class="pill">Facet</span>
+    <span class="pill">Constellation</span>
+  </div>
+
+  <footer>
+    <div>www.finddatatech.cloud · lex.finddatatech.cloud</div>
+    <div>Data figures: measured at the database as of 2026-10; model figures are head-to-head results on our own evaluation set, reproducible.</div>
+  </footer>
+
+</div>
+</body>
+</html>

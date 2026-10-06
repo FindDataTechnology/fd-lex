@@ -86,9 +86,14 @@ def test_both_stamps_present_rows_win() -> None:
 
 
 def test_missing_stamp_becomes_anomaly_not_silence() -> None:
-    """缺戳：不进计量表，落异常留痕（不静默）。"""
+    """缺戳（自报形态，无 log_type）→ 异常留痕（不静默）。
+
+    审计流形状（log_type=mcp_server_access）缺戳时的口径为「成功 tools/call
+    计 1 次」（见 test_metering_consume），故此处去掉 log_type 锚定显式
+    自报事件的严格留痕。
+    """
     event = {
-        **SEARCH_EVENT,
+        **{k: v for k, v in SEARCH_EVENT.items() if k != "log_type"},
         "request_id": "req-no-stamp",
         "mcp_response": {"status": "ok"},
     }

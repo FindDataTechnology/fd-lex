@@ -39,19 +39,48 @@ CustomerResolver = Callable[[str], Customer | None]
 
 
 def default_resolver(session: Session) -> CustomerResolver:
-    """默认身份映射（耦合点）：metering 的 caller → Customer.sub2api_user_id。
+    """默认身份映射（耦合点）：metering 的 caller → Customer。
 
-    v1 以 sub2api_user_id 承载 lex 侧客户身份键；正式的
-    Logto username ↔ Customer 映射落地后注入自定义 resolver 即可，
-    结算流程不用改。
+    顺序：① ``console_identity_bindings`` 绑定表（运营后台绑定的 Logto 身份，
+    含 patch-key 的 Logto sub 形态，如 8tajhoprelg0）；② 回落
+    ``Customer.sub2api_user_id == ref``（支付侧用户 id 直配的兼容路径）。
+    2026-10-06 首客开户演练实测：仅凭 ② 会漏掉已绑定身份，结算报
+    skipped_no_customer——绑定表才是真实身份映射的落点。
     """
 
     def resolve(ref: str) -> Customer | None:
+        from ..console_api.models import ConsoleIdentityBinding  # 延迟导入避环
+
+        binding = (
+            session.execute(
+                select(ConsoleIdentityBinding)
+                .where(ConsoleIdentityBinding.identity == ref)
+                .order_by(ConsoleIdentityBinding.id)
+            )
+            .scalars()
+            .first()
+        )
+        if binding is not None:
+            customer = session.get(Customer, binding.customer_id)
+            if customer is not None:
+                return customer
         return session.execute(
             select(Customer).where(Customer.sub2api_user_id == ref)
         ).scalar_one_or_none()
 
     return resolve
+
+
+def _sum_by_unit(usages: list[MeteringUsage]) -> list[MeteringUsage]:
+    """同一客户的多个身份 ref：按单位求和（含额按客户只算一次的口径依据）。"""
+    totals: dict[str, int] = {}
+    for usage in usages:
+        totals[usage.unit] = totals.get(usage.unit, 0) + usage.quantity
+    ref = usages[0].customer_ref if usages else ""
+    return [
+        MeteringUsage(customer_ref=ref, unit=unit, quantity=qty)
+        for unit, qty in sorted(totals.items())
+    ]
 
 
 @dataclass
@@ -141,12 +170,31 @@ class SettlementService:
             )
             return report
 
-        by_customer: dict[str, list[MeteringUsage]] = {}
+        # 先解析客户再归并：同一客户的多个计量身份 ref（如 Logto 用户名与
+        # patch-key 的 sub）合并为一组——配额按客户只算一次（多身份不重复
+        # 享受含额）；解析不到的 ref 保持独立，走 skipped_no_customer 报告。
+        resolved: dict[int, tuple[Customer, list[MeteringUsage]]] = {}
+        refs: dict[int, set[str]] = {}
+        unresolved: dict[str, list[MeteringUsage]] = {}
         for usage in usages:
-            by_customer.setdefault(usage.customer_ref, []).append(usage)
-        for ref in sorted(by_customer):
+            customer = self._resolver(usage.customer_ref)
+            if customer is None:
+                unresolved.setdefault(usage.customer_ref, []).append(usage)
+                continue
+            refs.setdefault(customer.id, set()).add(usage.customer_ref)
+            resolved.setdefault(customer.id, (customer, []))[1].append(usage)
+
+        for cid in sorted(resolved):
+            customer, group = resolved[cid]
+            label = ",".join(sorted(refs[cid]))
             report.results.append(
-                self._settle_customer(period, batch_ref, ref, by_customer[ref])
+                self._settle_customer(
+                    period, batch_ref, label, _sum_by_unit(group), customer=customer
+                )
+            )
+        for ref in sorted(unresolved):
+            report.results.append(
+                self._settle_customer(period, batch_ref, ref, unresolved[ref])
             )
         self._session.commit()  # 逐客户失败已入报告；成功部分照常落账
         return report
@@ -159,9 +207,11 @@ class SettlementService:
         batch_ref: str | None,
         customer_ref: str,
         usages: list[MeteringUsage],
+        *,
+        customer: Customer | None = None,
     ) -> CustomerSettlement:
         result = CustomerSettlement(status="settled", customer_ref=customer_ref)
-        customer = self._resolver(customer_ref)
+        customer = customer if customer is not None else self._resolver(customer_ref)
         if customer is None:
             result.status = "skipped_no_customer"
             result.error = f"metering customer_ref 无法映射客户: {customer_ref}"

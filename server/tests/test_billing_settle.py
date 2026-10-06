@@ -357,3 +357,46 @@ def test_unknown_metering_source_fails_whole_batch() -> None:
     report = service.settle(PERIOD)
     assert report.results[0].status == "failed_metering_source"
     assert ledger_count(session) == 0
+
+
+def test_bindings_resolver_and_multi_identity_merge() -> None:
+    """绑定表解析 + 多身份归并（2026-10-06 首客开户演练实测口径）：
+
+    patch-key 的 Logto sub（8tajhoprelg0）与用户名（lexdemocustomer）两个
+    计量 ref 归并为同一客户一次结算，含额按客户只算一次。
+    """
+    from fd_lex_api.console_api.models import ConsoleIdentityBinding
+
+    engine = make_engine()
+    session = Session(engine)
+    fake = FakeSub2Api()
+    plan = make_plan(
+        session, code="std", name="标准版", monthly_price_micro=0,
+        quotas=[{"unit": "call", "included_quantity": 1,
+                 "overage_unit_price_micro": 10_000}],
+    )
+    session.commit()
+    customer = add_customer(session, name="首客", plan_id=plan.id, sub2api_user_id="56")
+    fake.add_user("56", balance_micro=OPENING)
+    session.add(ConsoleIdentityBinding(customer_id=customer.id, identity="8tajhoprelg0"))
+    session.add(
+        ConsoleIdentityBinding(customer_id=customer.id, identity="lexdemocustomer")
+    )
+    session.commit()
+    insert_metering(engine, customer_ref="8tajhoprelg0", ts=TS, quantity=1, unit="call")
+    insert_metering(
+        engine, customer_ref="lexdemocustomer", ts=TS, quantity=1, unit="call"
+    )
+    service = SettlementService(session, fake.client(), SqlMeteringSource(engine))
+    report = service.settle(PERIOD)
+
+    assert len(report.results) == 1  # 两身份归并为一次结算
+    result = report.results[0]
+    assert result.ok and result.customer_id == customer.id
+    assert result.customer_ref == "8tajhoprelg0,lexdemocustomer"
+    unit = result.units[0]
+    # 合并用量 2 次 − 含额 1 次 → 超额 1 次 × ¥0.01
+    assert (unit.used_quantity, unit.overage_quantity, unit.overage_amount_micro) == (
+        2, 1, 10_000,
+    )
+    assert fake.balance("56") == OPENING - 10_000

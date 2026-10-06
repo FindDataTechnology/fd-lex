@@ -26,7 +26,13 @@ BASE = "http://sub2api.test"
 
 
 def make_engine():
-    """内存库：billing_* + metering_* 全部建表（静态池共享连接）。"""
+    """内存库：billing_* + metering_* + console_* 全部建表（静态池共享连接）。
+
+    console_* 表随结算 resolver（绑定表优先）一起成为共用依赖——
+    与生产 main.py 的 create_all 范围一致。
+    """
+    from fd_lex_api.console_api.models import ConsoleBase
+
     engine = create_engine(
         "sqlite://",
         connect_args={"check_same_thread": False},
@@ -34,6 +40,7 @@ def make_engine():
     )
     Base.metadata.create_all(engine)
     MeteringBase.metadata.create_all(engine)
+    ConsoleBase.metadata.create_all(engine)
     with engine.begin() as conn:
         conn.execute(text(METERING_RECORDS_DDL))
     return engine

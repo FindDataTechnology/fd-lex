@@ -48,9 +48,11 @@ def api_client(monkeypatch, tmp_path):
 
     engine = get_engine()
     BillingBase.metadata.create_all(engine)
+    from fd_lex_api.console_api.models import ConsoleBase
     from fd_lex_api.metering.db import MeteringBase
 
     MeteringBase.metadata.create_all(engine)
+    ConsoleBase.metadata.create_all(engine)  # 结算 resolver 绑定表优先需此表
 
     fake = FakeSub2Api()
     fake.add_user("u-api", balance_micro=10_000_000)

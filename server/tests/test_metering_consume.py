@@ -165,10 +165,10 @@ def test_mongo_source_with_injected_collection() -> None:
     since = datetime(2026, 9, 15, 10, 0, 0, tzinfo=timezone.utc)
     source = MongoAuditSource(collection=FakeCollection())
     batch = source.fetch(since, 500)
-    # timestamp 在审计流中以字符串存（实采），$gt 须用同格式字符串才命中
+    # 审计流 timestamp 实为 BSON date（naive UTC，2026-10-06 实采），按 datetime 过滤
     assert captured["filter"] == {
         "log_type": "mcp_server_access",
-        "timestamp": {"$gt": "2026-09-15 10:00:00.000000"},
+        "timestamp": {"$gt": since},
     }
     assert captured["sort"] == [("timestamp", 1)] and captured["limit"] == 500
     assert len(batch) == 1

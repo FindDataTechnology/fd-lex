@@ -88,10 +88,11 @@ class MongoAuditSource:
         collection = self._ensure_collection()
         query: dict[str, Any] = {"log_type": AUDIT_LOG_TYPE}
         if since is not None:
-            # registry 审计流 timestamp 以字符串存（"YYYY-MM-DD HH:MM:SS.ffffff"，
-            # 2026-10-06 实采）；同格式字符串字典序即时序，须以字符串做 $gt——
-            # BSON date 在类型序中排在字符串之前，用 datetime 过滤会全量命中。
-            query["timestamp"] = {"$gt": since.strftime("%Y-%m-%d %H:%M:%S.%f")}
+            # 实测（2026-10-06 首客开户演练）：audit_events_default.timestamp 为
+            # BSON date（naive UTC）。曾因 json 序列化引号误判为字符串并改成
+            # strftime 过滤——实测字符串 $gt 命中 0 条（BSON 类型序里 date 排
+            # 字符串之前），此处必须用 datetime 过滤。
+            query["timestamp"] = {"$gt": since}
         cursor = collection.find(query, sort=[("timestamp", 1)], limit=limit)
         return list(cursor)
 

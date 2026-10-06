@@ -216,7 +216,7 @@ def test_customer_funding_ledger_and_optional_sub2api(api_client) -> None:
     user_ref = _setup_plan_and_customer(client, fake)
     balance_before = fake.users[user_ref]["balance_micro"]
 
-    # ① 仅留痕：外部渠道已入账，lex 只记（不动支付侧）
+    # ① 登记（款项已在支付侧生效）：账本记负、applied=True（对账可见）
     resp = client.post(
         "/internal/billing/customers/1/funding",
         headers=HEADERS,
@@ -232,7 +232,7 @@ def test_customer_funding_ledger_and_optional_sub2api(api_client) -> None:
     assert body["created"] is True
     assert body["entry"]["kind"] == "adjustment"
     assert body["entry"]["amount_micro"] == -5_000_000  # 成本符号：入金为负
-    assert body["entry"]["sub2api_applied"] is False
+    assert body["entry"]["sub2api_applied"] is True
     assert fake.users[user_ref]["balance_micro"] == balance_before
 
     # ② 幂等重放：同 source_ref 不双记
@@ -263,14 +263,28 @@ def test_customer_funding_ledger_and_optional_sub2api(api_client) -> None:
     assert resp.json()["entry"]["sub2api_applied"] is True
     assert fake.users[user_ref]["balance_micro"] == balance_before + 2_000_000
 
-    # 账本流水含两笔 adjustment
+    # ④ 出账补记（负金额 → 账本记正）
+    resp = client.post(
+        "/internal/billing/customers/1/funding",
+        headers=HEADERS,
+        json={
+            "amount_micro": -1_000_000,
+            "period": "2026-09",
+            "source_ref": "manual-charge-202609-003",
+            "apply_to_sub2api": False,
+        },
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["entry"]["amount_micro"] == 1_000_000
+
+    # 账本流水含三笔 adjustment（入金记负、出账记正）
     entries = client.get(
         "/internal/billing/customers/1/ledger",
         params={"period": "2026-09"},
         headers=HEADERS,
     ).json()["entries"]
     adjusts = [e for e in entries if e["kind"] == "adjustment"]
-    assert {e["amount_micro"] for e in adjusts} == {-5_000_000, -2_000_000}
+    assert {e["amount_micro"] for e in adjusts} == {-5_000_000, -2_000_000, 1_000_000}
 
 
 def test_quota_endpoint(api_client) -> None:

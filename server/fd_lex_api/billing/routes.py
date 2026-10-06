@@ -268,13 +268,14 @@ class QuotaBody(BaseModel):
 
 
 class FundingBody(BaseModel):
-    """客户入金登记（开户收款在 lex 账本的留痕；2026-10-06 首客演练补口）。"""
+    """资金变动登记（开户收款/出账补记在 lex 账本的留痕；2026-10-06 首客演练补口）。"""
 
-    amount_micro: int = Field(gt=0)
+    #: 带符号：正=客户入金（账本按成本符号记负）；负=出账/消耗补记（账本记正）。
+    amount_micro: int
     period: str = Field(min_length=7, max_length=7)
     source_ref: str = Field(min_length=1, max_length=128)
-    #: true=同时经 sub2api adjustBalance 加余额（成功才落账）；
-    #: false=仅留痕（款项已由外部渠道入账，供对账期初/差额口径使用）。
+    #: true=同时经 sub2api adjustBalance 执行（成功才落账）；
+    #: false=款项已在支付侧生效（人工/外部渠道已调账），本服务只登记。
     apply_to_sub2api: bool = False
 
 
@@ -285,12 +286,15 @@ def record_funding(
     db: Session = Depends(get_db_session),
     sub2api: Sub2ApiClient = Depends(get_sub2api_client),
 ) -> dict[str, Any]:
-    """入金登记（幂等键 = adjust:{cid}:{period}:{source_ref}，source_ref 取流水号）。
+    """资金变动登记（幂等键 = adjust:{cid}:{period}:{source_ref}，source_ref 取流水号）。
 
-    账本取「成本符号」：入金记负数（对账式 expected = opening − Σapplied 因此成立）。
-    apply_to_sub2api=true 时先调支付侧（同幂等键），失败 502 且不落账——
-    重试同键净一次入账（与结算同一纪律）。
+    口径：登记即表示该笔资金已在支付侧生效（apply_to_sub2api 只决定是否由本
+    服务执行调账）——账本条目因此一律 sub2api_applied=True，对账式
+    ``expected = opening − Σapplied`` 才能覆盖"钱从哪来"。账本取成本符号：
+    入金记负、出账记正。失败 502 且不落账——重试同键净一次（与结算同纪律）。
     """
+    if body.amount_micro == 0:
+        raise HTTPException(status_code=422, detail="amount_micro 不能为 0")
     customer = _get_customer(db, customer_id)
     try:
         validate_period(body.period)
@@ -315,7 +319,6 @@ def record_funding(
             },
         }
 
-    applied = False
     if body.apply_to_sub2api:
         if not customer.sub2api_user_id:
             raise HTTPException(status_code=409, detail="客户未绑定 sub2api 账户")
@@ -326,15 +329,14 @@ def record_funding(
                 idempotency_key=key,
             )
         except Sub2ApiError as exc:
-            raise HTTPException(status_code=502, detail=f"sub2api 入金失败：{exc}") from exc
-        applied = True
+            raise HTTPException(status_code=502, detail=f"sub2api 资金调整失败：{exc}") from exc
 
     entry = ledger.record_adjustment(
         customer_id=customer.id,
         period=body.period,
-        amount_micro=-body.amount_micro,  # 成本符号：入金为负
+        amount_micro=-body.amount_micro,  # 成本符号：入金为负、出账为正
         source_ref=body.source_ref,
-        sub2api_applied=applied,
+        sub2api_applied=True,
     )
     db.commit()
     return {

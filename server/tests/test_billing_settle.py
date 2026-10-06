@@ -400,3 +400,14 @@ def test_bindings_resolver_and_multi_identity_merge() -> None:
         2, 1, 10_000,
     )
     assert fake.balance("56") == OPENING - 10_000
+
+    # 对账同口径：计量按身份集合匹配（含绑定身份），余额三方守恒（清账）
+    from fd_lex_api.billing import reconcile
+
+    report = reconcile(
+        session, fake.client(), SqlMeteringSource(engine),
+        period=PERIOD, opening_balances={customer.id: OPENING},
+    )
+    assert len(report.rows) == 1
+    row = report.rows[0]
+    assert row.is_clean, (row.difference_micro, row.units)

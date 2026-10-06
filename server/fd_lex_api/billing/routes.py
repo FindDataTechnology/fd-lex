@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -29,14 +29,14 @@ from .deps import (
     get_sub2api_client,
     require_internal_token,
 )
-from .ledger import Ledger
+from .ledger import Ledger, adjustment_key
 from .metering_source import MeteringSource
 from .models import Customer, Plan, validate_period
 from .plans import QuotaSpec, upsert_plan
 from .quota import quota_status
 from .reconcile import reconcile
 from .settle import SettlementService
-from .sub2api import Sub2ApiClient
+from .sub2api import Sub2ApiClient, Sub2ApiError
 
 router = APIRouter(prefix="/internal/billing", tags=["billing"],
                    dependencies=[Depends(require_internal_token)])
@@ -265,6 +265,90 @@ class QuotaBody(BaseModel):
     unit: str = Field(min_length=1, max_length=16)
     included_quantity: int = Field(default=0, ge=0)
     overage_unit_price_micro: int = Field(default=0, ge=0)
+
+
+class FundingBody(BaseModel):
+    """客户入金登记（开户收款在 lex 账本的留痕；2026-10-06 首客演练补口）。"""
+
+    amount_micro: int = Field(gt=0)
+    period: str = Field(min_length=7, max_length=7)
+    source_ref: str = Field(min_length=1, max_length=128)
+    #: true=同时经 sub2api adjustBalance 加余额（成功才落账）；
+    #: false=仅留痕（款项已由外部渠道入账，供对账期初/差额口径使用）。
+    apply_to_sub2api: bool = False
+
+
+@router.post("/customers/{customer_id}/funding")
+def record_funding(
+    body: FundingBody,
+    customer_id: int = Path(ge=1),
+    db: Session = Depends(get_db_session),
+    sub2api: Sub2ApiClient = Depends(get_sub2api_client),
+) -> dict[str, Any]:
+    """入金登记（幂等键 = adjust:{cid}:{period}:{source_ref}，source_ref 取流水号）。
+
+    账本取「成本符号」：入金记负数（对账式 expected = opening − Σapplied 因此成立）。
+    apply_to_sub2api=true 时先调支付侧（同幂等键），失败 502 且不落账——
+    重试同键净一次入账（与结算同一纪律）。
+    """
+    customer = _get_customer(db, customer_id)
+    try:
+        validate_period(body.period)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    ledger = Ledger(db)
+    key = adjustment_key(body.source_ref, customer.id, body.period)
+    existing = ledger.find(key)
+    if existing is not None:
+        db.commit()
+        return {
+            "created": False,
+            "entry": {
+                "id": existing.id,
+                "kind": existing.kind,
+                "amount_micro": existing.amount_micro,
+                "period": existing.period,
+                "idempotency_key": existing.idempotency_key,
+                "source_ref": existing.source_ref,
+                "sub2api_applied": existing.sub2api_applied,
+            },
+        }
+
+    applied = False
+    if body.apply_to_sub2api:
+        if not customer.sub2api_user_id:
+            raise HTTPException(status_code=409, detail="客户未绑定 sub2api 账户")
+        try:
+            sub2api.adjust_balance(
+                user_id=customer.sub2api_user_id,
+                amount_micro=body.amount_micro,
+                idempotency_key=key,
+            )
+        except Sub2ApiError as exc:
+            raise HTTPException(status_code=502, detail=f"sub2api 入金失败：{exc}") from exc
+        applied = True
+
+    entry = ledger.record_adjustment(
+        customer_id=customer.id,
+        period=body.period,
+        amount_micro=-body.amount_micro,  # 成本符号：入金为负
+        source_ref=body.source_ref,
+        sub2api_applied=applied,
+    )
+    db.commit()
+    return {
+        "created": entry.created,
+        "entry": {
+            "id": entry.entry.id,
+            "kind": entry.entry.kind,
+            "amount_micro": entry.entry.amount_micro,
+            "period": entry.entry.period,
+            "idempotency_key": entry.entry.idempotency_key,
+            "source_ref": entry.entry.source_ref,
+            "sub2api_applied": entry.entry.sub2api_applied,
+        },
+    }
 
 
 class PlanBody(BaseModel):

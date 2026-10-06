@@ -210,6 +210,69 @@ def test_plan_upsert_customer_settle_ledger_flow(api_client) -> None:
     assert sum(u["balance_micro"] for u in fake.users.values()) == balance_before
 
 
+def test_customer_funding_ledger_and_optional_sub2api(api_client) -> None:
+    """入金登记（2026-10-06 首客演练补口）：留痕/调账/幂等三态。"""
+    client, fake, engine = api_client
+    user_ref = _setup_plan_and_customer(client, fake)
+    balance_before = fake.users[user_ref]["balance_micro"]
+
+    # ① 仅留痕：外部渠道已入账，lex 只记（不动支付侧）
+    resp = client.post(
+        "/internal/billing/customers/1/funding",
+        headers=HEADERS,
+        json={
+            "amount_micro": 5_000_000,
+            "period": "2026-09",
+            "source_ref": "bank-202609-001",
+            "apply_to_sub2api": False,
+        },
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["created"] is True
+    assert body["entry"]["kind"] == "adjustment"
+    assert body["entry"]["amount_micro"] == -5_000_000  # 成本符号：入金为负
+    assert body["entry"]["sub2api_applied"] is False
+    assert fake.users[user_ref]["balance_micro"] == balance_before
+
+    # ② 幂等重放：同 source_ref 不双记
+    again = client.post(
+        "/internal/billing/customers/1/funding",
+        headers=HEADERS,
+        json={
+            "amount_micro": 5_000_000,
+            "period": "2026-09",
+            "source_ref": "bank-202609-001",
+            "apply_to_sub2api": False,
+        },
+    )
+    assert again.json()["created"] is False
+
+    # ③ 经 sub2api 入金：先调支付侧，成功才落账（applied=True）
+    resp = client.post(
+        "/internal/billing/customers/1/funding",
+        headers=HEADERS,
+        json={
+            "amount_micro": 2_000_000,
+            "period": "2026-09",
+            "source_ref": "wire-202609-002",
+            "apply_to_sub2api": True,
+        },
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["entry"]["sub2api_applied"] is True
+    assert fake.users[user_ref]["balance_micro"] == balance_before + 2_000_000
+
+    # 账本流水含两笔 adjustment
+    entries = client.get(
+        "/internal/billing/customers/1/ledger",
+        params={"period": "2026-09"},
+        headers=HEADERS,
+    ).json()["entries"]
+    adjusts = [e for e in entries if e["kind"] == "adjustment"]
+    assert {e["amount_micro"] for e in adjusts} == {-5_000_000, -2_000_000}
+
+
 def test_quota_endpoint(api_client) -> None:
     client, fake, engine = api_client
     user_ref = _setup_plan_and_customer(client, fake)

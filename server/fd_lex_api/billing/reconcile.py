@@ -128,13 +128,18 @@ class ReconcileReport:
 
 
 def _metering_by_unit(
-    metering: MeteringSource, period: str, customer_ref: str
+    metering: MeteringSource, period: str, refs: set[str]
 ) -> dict[str, int]:
-    return {
-        u.unit: u.quantity
-        for u in metering.aggregates(period)
-        if u.customer_ref == customer_ref
-    }
+    """按客户身份集合聚合（绑定身份 + sub2api_user_id；同客户多身份求和）。
+
+    2026-10-06 首客开户演练实测：仅按 sub2api_user_id 匹配会漏掉 patch-key
+    的 Logto sub 身份（如 8tajhoprelg0）用量 → 计量侧假阴。
+    """
+    totals: dict[str, int] = {}
+    for u in metering.aggregates(period):
+        if u.customer_ref in refs:
+            totals[u.unit] = totals.get(u.unit, 0) + u.quantity
+    return totals
 
 
 def _ledger_units_by_unit(session: Session, customer_id: int, period: str) -> tuple[dict[str, int], dict[str, int]]:
@@ -177,7 +182,11 @@ def reconcile(
         expected = opening_micro - applied
 
         # 计量流侧（任何情况下都算——sub2api 挂了也能出计量差异）
-        metered = _metering_by_unit(metering, period, customer.sub2api_user_id or "")
+        from ..console_api.identity import customer_identities  # 延迟导入避环
+
+        metered = _metering_by_unit(
+            metering, period, set(customer_identities(session, customer))
+        )
         included_by_unit, overage_by_unit = _ledger_units_by_unit(
             session, customer.id, period
         )

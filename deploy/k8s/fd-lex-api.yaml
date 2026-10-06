@@ -30,7 +30,7 @@ spec:
     spec:
       containers:
         - name: api
-          image: ccr.ccs.tencentyun.com/finddata-business/fd-lex-api:sha-238da98
+          image: ccr.ccs.tencentyun.com/finddata-business/fd-lex-api:sha-92632b7
           imagePullPolicy: IfNotPresent
           ports:
             - name: http

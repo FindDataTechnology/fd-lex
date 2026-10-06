@@ -210,12 +210,25 @@ def test_audit_stream_counts_successful_tool_calls_when_no_stamps() -> None:
         ]
 
 
-def test_push_path_keeps_strict_missing_stamp() -> None:
-    """推送路径（服务端自报）保持「缺戳不静默」：无戳即异常留痕。"""
+def test_push_path_audit_shaped_events_use_audit_caliber() -> None:
+    """推送入口的审计流形状事件（log_type=mcp_server_access）同用审计流口径。"""
     from fd_lex_api.metering.ingest import ingest_events
 
     engine = make_engine()
     with Session(engine) as db:
-        result = ingest_events(db, [_audit_call("req-push", TS0)])
+        result = ingest_events(db, [_audit_call("req-push-audit", TS0)])
+        assert result.accepted == 1
+        assert result.anomalies == 0
+
+
+def test_self_reported_events_keep_strict_missing_stamp() -> None:
+    """显式自报事件（无 log_type，服务端盖章形态）保持「缺戳不静默」。"""
+    from fd_lex_api.metering.ingest import ingest_events
+
+    engine = make_engine()
+    event = _audit_call("req-self-report", TS0)
+    event.pop("log_type")
+    with Session(engine) as db:
+        result = ingest_events(db, [event])
         assert result.accepted == 0
         assert result.anomalies == 1

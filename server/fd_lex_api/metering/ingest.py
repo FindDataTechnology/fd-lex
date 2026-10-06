@@ -56,8 +56,9 @@ def ingest_events(
 ) -> IngestResult:
     """把一批原始审计事件规范化并幂等写入；调用方负责 commit。
 
-    ``assume_tool_call`` 透传 normalize 层：audit 流消费路径（不含用量戳）
-    以「成功 tools/call 每次计 1」入账；推送路径保持缺戳异常留痕。
+    ``assume_tool_call`` 透传 normalize 层强制审计流口径；log_type 为
+    ``mcp_server_access`` 的事件本身即适用该口径（两个摄取入口一致），
+    显式自报事件（无 log_type）保持缺戳异常留痕。
     """
     result = IngestResult()
     seen_records: set[tuple[str, str]] = set()

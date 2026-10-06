@@ -180,11 +180,13 @@ def normalize_event(
 ) -> NormalizedRecord | NormalizedAnomaly | SkippedEvent:
     """单条审计事件 → 计量记录 / 异常留痕 / 跳过（两条摄取入口共用的唯一入口）。
 
-    ``assume_tool_call=True`` = audit 流消费路径的计数口径（2026-10-06 首客
+    ``assume_tool_call=True`` = 审计流消费路径的计数口径（2026-10-06 首客
     开户演练实采：registry 审计记录不含 rows/calls 用量戳，只到 status/
     duration）——成功的 ``tools/call`` 以次数入账（每次计 1，unit=call），
     协议流量（initialize/tools/list 等）与失败调用不计费；行/次戳若未来
-    入流仍优先（此口径为缺戳时的审计流回退）。推送路径保持「缺戳不静默」。
+    入流仍优先（此口径为缺戳时的审计流回退）。``log_type=='mcp_server_access'``
+    的事件（审计流形状，消费与推送两入口共有）同样适用该口径；显式自报
+    事件（无 log_type）保持「缺戳不静默」。
     """
     settings = get_settings()
     # 仅消费 MCP 工具调用审计流；其余审计类型与逐调用计量无关，跳过不落表。
@@ -245,7 +247,10 @@ def normalize_event(
         quantity, unit = rows, "line"
     elif calls is not None:
         quantity, unit = calls, "call"
-    elif assume_tool_call:
+    elif assume_tool_call or log_type == "mcp_server_access":
+        # 审计流形状的事件（无论走消费还是推送入口）都用审计流口径：
+        # 该流不携带用量戳（其 mcp_response 只到 status/duration），成功
+        # tools/call 每次计 1；显式自报事件（无 log_type）仍走缺戳异常。
         method = event.mcp_request.method if event.mcp_request else None
         status = str((event.mcp_response or {}).get("status") or "")
         if method == "tools/call" and status == "success":

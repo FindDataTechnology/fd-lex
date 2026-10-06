@@ -197,5 +197,9 @@ def quota_status(
         )
 
     if sub2api is not None and customer.sub2api_user_id:
-        status.balance = sub2api.probe(customer.sub2api_user_id, min_balance_micro=min_balance_micro)
+        # 余额下限与 registry 预检口径对齐：preflight 对 balance<=0 一律 402
+        # （2026-10-06 首客开户演练实弹）；min 传 0 时若按字面比较会得出
+        # 「零余额 sufficient=true」的控制台假阴（演练实测）——故下限至少取 1。
+        floor = max(min_balance_micro, 1)
+        status.balance = sub2api.probe(customer.sub2api_user_id, min_balance_micro=floor)
     return status

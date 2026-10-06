@@ -125,6 +125,17 @@ def test_insufficient_balance_denied() -> None:
     assert status.denial_reason == "insufficient_balance"
 
 
+def test_zero_balance_denied_with_default_floor() -> None:
+    """零余额 → 默认口径即拒绝：与 registry 预检 balance<=0 → 402 一致
+    （2026-10-06 首客开户演练：不传 min 时曾得 sufficient=true 的假阴）。"""
+    engine, session, fake, customer = build_env()
+    fake.users["u-a"]["balance_micro"] = 0
+    status = _status(session, fake, customer, {"line": 10})  # 不传 min_balance_micro
+    assert not status.allowed
+    assert status.denial_reason == "insufficient_balance"
+    assert status.balance is not None and status.balance.sufficient is False
+
+
 def test_usage_on_unconfigured_unit_visible_but_not_blocking() -> None:
     """有用量但套餐未配置的单位：状态可见（configured=False），不阻断。"""
     engine, session, fake, customer = build_env()

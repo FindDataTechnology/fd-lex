@@ -12,7 +12,7 @@
 | N4 | 裁判文书篇数 | 37,001,012（约 3,700 万） | judgments 按文档标识（doc_id）去重计数=行数（装载链去重后入库，doc_id 全表唯一）；**行数口径与篇数口径在此库上同值** | live：`select count(distinct doc_id) from judgments` | 2026-10-07 |
 | N5 | 指导性案例 | 278 篇案例 + 15 条批次通知 | law_db.guide_cases 按 doc_type 分型（case 278 / notice 15；1–279 号缺 45） | live 查询 | 2026-10-07 |
 | N6 | 权威语料总量 | 30,151 | law_db.legal_documents 合计：规章 rule 10,567 / 条约 treaty 7,310 / 监察法规 supervisory-regulation 6,412 / 参考案例 reference-case 5,233 / 指导案例 guiding-case 232 / 案例 case 200 / 党内法规 party-regulation 197 | live 查询 | 2026-10-07 |
-| N7 | 法律检索 MCP 工具数 | 10 | lex 入口（lex.finddatatech.cloud/mcp → fd-legal-search-mcp，现网版本 4.0.11）tools/list 实测；10 工具口径与 lex-platform-v1 task 7.1 E2E（wgk- 客户 key，2026-10-06）一致 | 现网 + lex-platform-v1 reports | 2026-10-07（入口复验 200；tools/list 全量清点见任务 2.1 现网复跑） |
+| N7 | 法律检索 MCP 工具数 | 10 | lex 入口（lex.finddatatech.cloud/mcp → fd-legal-search-mcp，现网版本 4.0.11）tools/list 实测：law_search / law_read / law_semantic_search / law_reference / wenshu_search / wenshu_read / guide_cases_search / guide_cases_read / legal_docs_search / legal_docs_read | 现网 tools/list（wgk- 测试 key 全链） | 2026-10-07 |
 | N8 | 评审准确率对照 | 10.9% → 84.4% | 自有评测集，通用基线模型 vs 法律领域模型 | docs/CUSTOMER-SERVICE-CATALOG.md §4.1（已核验） | 2026-09（目录口径） |
 | N9 | 结构化输出合规率对照 | 38.5% → 100% | 同 N8 | 同 N8 | 2026-09 |
 | N10 | 单条处理耗时对照 | 27.3s → 10.2s | 同 N8 | 同 N8 | 2026-09 |

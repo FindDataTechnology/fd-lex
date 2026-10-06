@@ -48,8 +48,17 @@ class IngestResult:
         }
 
 
-def ingest_events(db: Session, events: Iterable[dict[str, Any]]) -> IngestResult:
-    """把一批原始审计事件规范化并幂等写入；调用方负责 commit。"""
+def ingest_events(
+    db: Session,
+    events: Iterable[dict[str, Any]],
+    *,
+    assume_tool_call: bool = False,
+) -> IngestResult:
+    """把一批原始审计事件规范化并幂等写入；调用方负责 commit。
+
+    ``assume_tool_call`` 透传 normalize 层：audit 流消费路径（不含用量戳）
+    以「成功 tools/call 每次计 1」入账；推送路径保持缺戳异常留痕。
+    """
     result = IngestResult()
     seen_records: set[tuple[str, str]] = set()
     seen_anomalies: set[tuple[str, str, str]] = set()
@@ -57,7 +66,9 @@ def ingest_events(db: Session, events: Iterable[dict[str, Any]]) -> IngestResult
 
     for raw in events:
         result.received += 1
-        normalized = normalize_event(raw if isinstance(raw, dict) else {})
+        normalized = normalize_event(
+            raw if isinstance(raw, dict) else {}, assume_tool_call=assume_tool_call
+        )
 
         if isinstance(normalized, SkippedEvent):
             result.skipped += 1

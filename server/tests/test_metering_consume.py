@@ -95,7 +95,11 @@ def test_consume_watermark_lookback_window() -> None:
 
 
 def test_anomaly_carries_watermark() -> None:
-    """异常留痕也推进水位（anomalies 的 event_timestamp 参与取大）。"""
+    """异常留痕也推进水位（anomalies 的 event_timestamp 参与取大）。
+
+    注：无 method 的事件在审计流口径下无法归类调用（协议流量/失败调用会被
+    计入 skipped），故取「缺 method + 缺戳」作为异常样本。
+    """
     engine = make_engine()
     bad = {
         "log_type": "mcp_server_access",
@@ -103,8 +107,8 @@ def test_anomaly_carries_watermark() -> None:
         "request_id": "req-bad",
         "identity": {"username": "cust-acme"},
         "mcp_server": {"name": "legal-search-mcp"},
-        "mcp_request": {"method": "tools/call"},
-        "mcp_response": {"status": "ok"},  # 缺戳 → anomaly
+        "mcp_request": {},  # 缺 method
+        "mcp_response": {"status": "success"},  # 缺戳 → anomaly
     }
     source = InMemoryAuditSource([_event("req-1", TS0, {"rows_returned": 1}), bad])
     with Session(engine) as db:
@@ -161,9 +165,57 @@ def test_mongo_source_with_injected_collection() -> None:
     since = datetime(2026, 9, 15, 10, 0, 0, tzinfo=timezone.utc)
     source = MongoAuditSource(collection=FakeCollection())
     batch = source.fetch(since, 500)
+    # timestamp 在审计流中以字符串存（实采），$gt 须用同格式字符串才命中
     assert captured["filter"] == {
         "log_type": "mcp_server_access",
-        "timestamp": {"$gt": since},
+        "timestamp": {"$gt": "2026-09-15 10:00:00.000000"},
     }
     assert captured["sort"] == [("timestamp", 1)] and captured["limit"] == 500
     assert len(batch) == 1
+
+
+def _audit_call(rid: str, ts: str, *, method: str = "tools/call",
+                status: str = "success", tool_name: str = "wenshu_search") -> dict:
+    """审计流实采形状：无 rows/calls 用度戳，只有 status/duration。"""
+    return {
+        "log_type": "mcp_server_access",
+        "timestamp": ts,
+        "request_id": rid,
+        "identity": {"username": "lexdemocustomer", "auth_method": "patch-key"},
+        "mcp_server": {"name": "virtual/lex-legal"},
+        "mcp_request": {"method": method, "tool_name": tool_name},
+        "mcp_response": {"status": status, "duration_ms": 12.0, "error_code": None},
+    }
+
+
+def test_audit_stream_counts_successful_tool_calls_when_no_stamps() -> None:
+    """审计流口径：成功 tools/call 每次计 1（unit=call）；协议流量与失败调用不计费。"""
+    engine = make_engine()
+    source = InMemoryAuditSource(
+        [
+            _audit_call("req-call", TS0),
+            _audit_call("req-init", TS0, method="initialize", tool_name=""),
+            _audit_call("req-list", TS0, method="tools/list", tool_name=""),
+            _audit_call("req-fail", TS1, status="error"),
+        ]
+    )
+    with Session(engine) as db:
+        result = consume_once(db, source)
+        assert result.ingest.accepted == 1
+        assert result.ingest.skipped == 3
+        assert result.ingest.anomalies == 0  # 审计流不因缺戳刷异常
+        records = list(db.execute(select(MeteringRecord)).scalars())
+        assert [(r.request_id, r.unit, r.quantity) for r in records] == [
+            ("req-call", "call", 1)
+        ]
+
+
+def test_push_path_keeps_strict_missing_stamp() -> None:
+    """推送路径（服务端自报）保持「缺戳不静默」：无戳即异常留痕。"""
+    from fd_lex_api.metering.ingest import ingest_events
+
+    engine = make_engine()
+    with Session(engine) as db:
+        result = ingest_events(db, [_audit_call("req-push", TS0)])
+        assert result.accepted == 0
+        assert result.anomalies == 1

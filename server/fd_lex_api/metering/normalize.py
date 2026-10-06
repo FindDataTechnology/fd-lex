@@ -175,8 +175,17 @@ def resolve_source(credential_track: str) -> str:
 
 def normalize_event(
     raw: dict[str, Any],
+    *,
+    assume_tool_call: bool = False,
 ) -> NormalizedRecord | NormalizedAnomaly | SkippedEvent:
-    """单条审计事件 → 计量记录 / 异常留痕 / 跳过（两条摄取入口共用的唯一入口）。"""
+    """单条审计事件 → 计量记录 / 异常留痕 / 跳过（两条摄取入口共用的唯一入口）。
+
+    ``assume_tool_call=True`` = audit 流消费路径的计数口径（2026-10-06 首客
+    开户演练实采：registry 审计记录不含 rows/calls 用量戳，只到 status/
+    duration）——成功的 ``tools/call`` 以次数入账（每次计 1，unit=call），
+    协议流量（initialize/tools/list 等）与失败调用不计费；行/次戳若未来
+    入流仍优先（此口径为缺戳时的审计流回退）。推送路径保持「缺戳不静默」。
+    """
     settings = get_settings()
     # 仅消费 MCP 工具调用审计流；其余审计类型与逐调用计量无关，跳过不落表。
     log_type = raw.get("log_type") if isinstance(raw, dict) else None
@@ -227,14 +236,24 @@ def normalize_event(
     tool_name = event.mcp_request.tool_name if event.mcp_request else None
 
     # 双单位判定：行数戳优先（读取/检索类），其次次数戳（生成/评测类）；
-    # 皆缺 → 异常留痕（lex-billing-metering「缺戳不静默」）。
+    # 皆缺时按消费路径分流（详见 normalize_event 文档串）。
     rows = extract_rows_returned(raw)
     calls = extract_calls_used(raw)
+    quantity: int | None = None
+    unit: str | None = None
     if rows is not None:
         quantity, unit = rows, "line"
     elif calls is not None:
         quantity, unit = calls, "call"
-    else:
+    elif assume_tool_call:
+        method = event.mcp_request.method if event.mcp_request else None
+        status = str((event.mcp_response or {}).get("status") or "")
+        if method == "tools/call" and status == "success":
+            quantity, unit = 1, "call"  # 审计流计数口径：成功调用每次计 1
+        elif method:
+            # 协议流量（initialize/tools/list/…）与失败调用不计费，静默跳过
+            return SkippedEvent(log_type=str(log_type) if log_type is not None else None)
+    if quantity is None or unit is None:
         response = event.mcp_response or {}
         return NormalizedAnomaly(
             reason=REASON_MISSING_STAMP,

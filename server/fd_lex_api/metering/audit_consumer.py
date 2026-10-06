@@ -88,7 +88,10 @@ class MongoAuditSource:
         collection = self._ensure_collection()
         query: dict[str, Any] = {"log_type": AUDIT_LOG_TYPE}
         if since is not None:
-            query["timestamp"] = {"$gt": since}
+            # registry 审计流 timestamp 以字符串存（"YYYY-MM-DD HH:MM:SS.ffffff"，
+            # 2026-10-06 实采）；同格式字符串字典序即时序，须以字符串做 $gt——
+            # BSON date 在类型序中排在字符串之前，用 datetime 过滤会全量命中。
+            query["timestamp"] = {"$gt": since.strftime("%Y-%m-%d %H:%M:%S.%f")}
         cursor = collection.find(query, sort=[("timestamp", 1)], limit=limit)
         return list(cursor)
 
@@ -171,5 +174,7 @@ def consume_once(
         since = to_utc(watermark) - overlap
 
     batch = source.fetch(since, batch_limit)
-    ingest = ingest_events(db, batch)
+    # audit 流不含用量戳：以「成功 tools/call 每次计 1」口径入账（行/次戳
+    # 若未来入流仍优先，见 normalize_event 文档串）。
+    ingest = ingest_events(db, batch, assume_tool_call=True)
     return ConsumeResult(fetched=len(batch), ingest=ingest)

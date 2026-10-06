@@ -14,7 +14,8 @@ WORKDIR /app
 COPY pyproject.toml README.md ./
 COPY fd_lex_api ./fd_lex_api
 
-RUN if [ -n "$PIP_INDEX_URL" ]; then pip install --no-cache-dir -i "$PIP_INDEX_URL" .; else pip install --no-cache-dir .; fi \
+# [mongo] extra：audit 流直读/推送摄取两路都可用（REGISTRY_MONGO_* 或 /internal/metering/events）。
+RUN if [ -n "$PIP_INDEX_URL" ]; then pip install --no-cache-dir -i "$PIP_INDEX_URL" '.[mongo]'; else pip install --no-cache-dir '.[mongo]'; fi \
  && useradd -m -u 1000 appuser
 
 USER appuser

@@ -188,6 +188,9 @@ def test_customer_create_surfaces_sub2api_failure(admin_env) -> None:
     from fd_lex_api.billing.sub2api import Sub2ApiClient, Sub2ApiUnavailable
 
     class BoomClient(Sub2ApiClient):
+        def find_user_by_email(self, email: str):  # type: ignore[override]
+            return None  # 邮箱无既有账户 → 进入 create 路径
+
         def create_user(self, **kwargs):  # type: ignore[override]
             raise Sub2ApiUnavailable("sub2api 不可达: connect timeout")
 

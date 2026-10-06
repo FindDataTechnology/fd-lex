@@ -122,6 +122,7 @@ def list_customers(db: Session = Depends(get_db_session)) -> dict[str, Any]:
 class CreateCustomerBody(BaseModel):
     name: str = Field(min_length=1, max_length=128)
     plan_code: str = Field(min_length=1, max_length=32)
+    email: str | None = Field(default=None, max_length=255)
     idempotency_key: str | None = Field(default=None, max_length=191)
 
 
@@ -137,6 +138,7 @@ def create_customer(
             sub2api,
             name=body.name,
             plan_code=body.plan_code,
+            email=body.email,
             idempotency_key=body.idempotency_key,
         )
     except ValueError as exc:

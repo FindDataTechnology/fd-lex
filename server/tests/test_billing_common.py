@@ -113,7 +113,11 @@ def insert_metering(
 
 
 class FakeSub2Api:
-    """sub2api admin 面的内存假件：记账真实余额 + Idempotency-Key 去重。"""
+    """sub2api admin 面的内存假件（契约照 2026-10-06 生产实测重写）：
+    x-api-key 鉴权、envelope {code,message,data}、/api/v1/admin/* 路径、
+    balance 更新 {balance>0, operation: set|add|subtract} + Idempotency-Key 去重。"""
+
+    AUTH_KEY = "test-admin-key"
 
     def __init__(self) -> None:
         self.users: dict[str, dict] = {}
@@ -125,64 +129,124 @@ class FakeSub2Api:
     # -- 数据准备 -----------------------------------------------------------
 
     def add_user(self, user_id: str, *, name: str = "user",
-                 balance_micro: int = 0) -> str:
-        self.users[user_id] = {"name": name, "balance_micro": balance_micro}
+                 balance_micro: int = 0, email: str = "",
+                 status: str = "active") -> str:
+        self.users[user_id] = {
+            "name": name,
+            "username": name,
+            "email": email or f"{user_id}@test.invalid",
+            "balance_micro": balance_micro,
+            "status": status,
+        }
         return user_id
 
     @property
     def adjust_calls(self) -> list[dict]:
-        return [
-            c for c in self.calls
-            if c["op"] == "POST" and "balance-adjustments" in c["url"]
-        ]
+        return [c for c in self.calls if c["op"] == "POST" and c["url"].endswith("/balance")]
 
     def balance(self, user_id: str) -> int:
         return self.users[user_id]["balance_micro"]
 
+    def _payload(self, user_id: str) -> dict:
+        u = self.users[user_id]
+        return {
+            "id": int(user_id) if user_id.isdigit() else user_id,
+            "email": u.get("email", ""),
+            "username": u.get("username") or u.get("name", ""),
+            "balance": u["balance_micro"],  # 数值与写入同单位（无换算）
+            "status": u.get("status", "active"),
+        }
+
+    @staticmethod
+    def _ok(data) -> httpx.Response:  # noqa: ANN001
+        return httpx.Response(200, json={"code": 0, "message": "success", "data": data})
+
+    @staticmethod
+    def _err(status: int, message: str) -> httpx.Response:
+        return httpx.Response(status, json={"code": status, "message": message})
+
     # -- HTTP 面 ------------------------------------------------------------
 
     def handler(self, request: httpx.Request) -> httpx.Response:
-        op, url = request.method, str(request.url)
+        op, url, path = request.method, str(request.url), request.url.path
         idem = request.headers.get("Idempotency-Key")
         self.calls.append({"op": op, "url": url, "idem": idem,
+                           "auth": request.headers.get("x-api-key"),
                            "body": request.content.decode() if request.content else None})
-        if op == "GET" and "/admin/api/users/" in url:
+        if request.headers.get("x-api-key") != self.AUTH_KEY:
+            return self._err(401, "Invalid admin API key")
+
+        if op == "GET" and path == "/api/v1/admin/users":  # listUsers(search)
             if self.fail_reads_left > 0:
                 self.fail_reads_left -= 1
                 return httpx.Response(503, text="billing plane down")
-            user_id = url.rstrip("/").rsplit("/", 1)[-1]
-            user = self.users.get(user_id)
-            if user is None:
-                return httpx.Response(404, json={"error": "no such user"})
-            return httpx.Response(200, json={"id": user_id, **user})
-        if op == "POST" and url.endswith("/admin/api/users"):
-            if idem and idem in self.idem_cache:
-                return httpx.Response(200, json=self.idem_cache[idem])
+            search = request.url.params.get("search", "").lower()
+            items = [
+                self._payload(uid) for uid, u in self.users.items()
+                if not search
+                or search in f"{u.get('email','')} {u.get('username') or u.get('name','')}".lower()
+            ]
+            return self._ok({"items": items, "total": len(items)})
+
+        if op == "GET" and path.startswith("/api/v1/admin/users/"):  # readUser
+            if self.fail_reads_left > 0:
+                self.fail_reads_left -= 1
+                return httpx.Response(503, text="billing plane down")
+            user_id = path.rsplit("/", 1)[-1]
+            if user_id not in self.users:
+                return self._err(404, "user not found")
+            return self._ok(self._payload(user_id))
+
+        if op == "POST" and path == "/api/v1/admin/users":  # createUser
             body = json.loads(request.content or b"{}")
-            digest = hashlib.sha1((idem or body.get("name", "?")).encode()).hexdigest()[:8]
+            email = str(body.get("email", ""))
+            if any(u.get("email", "").lower() == email.lower() for u in self.users.values()):
+                return self._err(400, "email already exists")
+            digest = hashlib.sha1(email.encode()).hexdigest()[:8]
             user_id = f"su-{digest}"
-            self.users[user_id] = {"name": body.get("name", ""), "balance_micro": 0}
-            payload = {"id": user_id, **self.users[user_id]}
-            if idem:
-                self.idem_cache[idem] = payload
-            return httpx.Response(201, json=payload)
-        if op == "POST" and "/balance-adjustments" in url:
+            self.users[user_id] = {
+                "name": body.get("username") or email,
+                "username": body.get("username") or "",
+                "email": email,
+                "balance_micro": int(body.get("balance", 0) or 0),
+                "status": "active",
+            }
+            return self._ok(self._payload(user_id))
+
+        if op == "POST" and path.endswith("/balance"):  # updateBalance
             if self.fail_adjust_left > 0:
                 self.fail_adjust_left -= 1
                 return httpx.Response(503, text="adjust boom")
-            user_id = url.rstrip("/").rsplit("/users/", 1)[-1].split("/")[0]
             if idem and idem in self.idem_cache:
-                return httpx.Response(200, json=self.idem_cache[idem])
-            user = self.users.get(user_id)
-            if user is None:
-                return httpx.Response(404, json={"error": "no such user"})
+                return self._ok(self.idem_cache[idem])
+            user_id = path.split("/")[5]
+            if user_id not in self.users:
+                return self._err(404, "user not found")
             body = json.loads(request.content or b"{}")
-            user["balance_micro"] += int(body["amount_micro"])
-            payload = {"id": user_id, **user}
+            amount = float(body.get("balance", 0))
+            operation = body.get("operation")
+            if amount <= 0 or operation not in ("set", "add", "subtract"):
+                return self._err(400, "Invalid request: balance gt=0, operation oneof set add subtract")
+            user = self.users[user_id]
+            if operation == "set":
+                user["balance_micro"] = int(amount)
+            elif operation == "add":
+                user["balance_micro"] += int(amount)
+            else:
+                user["balance_micro"] -= int(amount)
+            payload = self._payload(user_id)
             if idem:
                 self.idem_cache[idem] = payload
-            return httpx.Response(200, json=payload)
-        return httpx.Response(404, json={"error": f"unmatched {op} {url}"})
+            return self._ok(payload)
+
+        if op == "DELETE" and path.startswith("/api/v1/admin/users/"):  # deleteUser
+            user_id = path.rsplit("/", 1)[-1]
+            if user_id not in self.users:
+                return self._err(404, "user not found")
+            self.users.pop(user_id)
+            return self._ok({"message": "User deleted successfully"})
+
+        return self._err(404, f"unmatched {op} {url}")
 
     def client(self) -> Sub2ApiClient:
         return Sub2ApiClient(

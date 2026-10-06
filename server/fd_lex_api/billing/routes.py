@@ -230,6 +230,7 @@ def customer_quota(
 class CreateCustomerBody(BaseModel):
     name: str = Field(min_length=1, max_length=128)
     plan_code: str = Field(min_length=1, max_length=32)
+    email: str | None = Field(default=None, max_length=255)
     idempotency_key: str | None = Field(default=None, max_length=191)
 
 
@@ -239,13 +240,14 @@ def create_customer(
     db: Session = Depends(get_db_session),
     sub2api: Sub2ApiClient = Depends(get_sub2api_client),
 ) -> dict[str, Any]:
-    """开户（幂等）：Customer 行 + sub2api 代建账户。"""
+    """开户（幂等）：Customer 行 + sub2api 代建/认领账户（email 命中即认领）。"""
     try:
         customer, created = ensure_customer(
             db,
             sub2api,
             name=body.name,
             plan_code=body.plan_code,
+            email=body.email,
             idempotency_key=body.idempotency_key,
         )
     except ValueError as exc:

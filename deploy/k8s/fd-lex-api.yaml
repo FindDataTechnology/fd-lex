@@ -28,9 +28,23 @@ spec:
         app.kubernetes.io/part-of: finddata
         app.kubernetes.io/environment: production
     spec:
+      # 迁移先行：schema 唯一事实源=alembic 链（2026-10-12 sqlite→PG 接客
+      # 硬前提）。initContainer 幂等 upgrade head 后主容器才起——发版不再
+      # 依赖 create_all（生产 METERING_AUTO_CREATE_TABLES=false）。
+      initContainers:
+        - name: migrate
+          image: ccr.ccs.tencentyun.com/finddata-business/fd-lex-api:sha-fd61ff5
+          imagePullPolicy: IfNotPresent
+          command: ["alembic", "upgrade", "head"]
+          envFrom:
+            - secretRef:
+                name: fd-lex-env
+          resources:
+            requests: { cpu: 10m, memory: 64Mi }
+            limits: { cpu: 100m, memory: 128Mi }
       containers:
         - name: api
-          image: ccr.ccs.tencentyun.com/finddata-business/fd-lex-api:sha-054a6d4
+          image: ccr.ccs.tencentyun.com/finddata-business/fd-lex-api:sha-fd61ff5
           imagePullPolicy: IfNotPresent
           ports:
             - name: http

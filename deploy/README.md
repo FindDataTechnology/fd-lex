@@ -13,11 +13,14 @@
 
 | env | 用途 |
 |---|---|
-| `DATABASE_URL` | 结算账本库（v1 骨架 sqlite:////tmp/fd_lex_billing.db；接真实客户前迁 PG） |
+| `DATABASE_URL` | 结算账本库（**2026-10-12 起=PG**：postgresql+psycopg://lex:***@100.64.0.12:5434/lex_platform，cheap-3 lex-postgres 容器；旧 sqlite 骨架债已销） |
 | `INTERNAL_API_TOKEN` | /internal/* 简单 bearer（接 Logto 后收敛到 billing/deps.py 一处）；同时是后台 X-Admin-Token 路径的令牌 |
 | `SUB2API_BASE` | https://router.finddatatech.cloud |
 | `SUB2API_ADMIN_KEY` | sub2api admin API（与 fd-wire-env 同键借用） |
-| `REGISTRY_MONGO_*` | audit 流消费（MongoAuditSource；未配时消费端点显式 409，骨架期留空） |
+| `REGISTRY_MONGO_*` | audit 流直读（MongoAuditSource；**2026-10-12 起生产在役**：lex_metering_ro 只读账号 @100.64.0.11:27017 + COLLECTION=audit_events_default） |
+| `METERING_SERVER_ALLOWLIST` | lex 计费域 server 白名单（防别线流量吸进 lex 计量表） |
+| `METERING_DRIVER_ENABLED/INTERVAL_SECONDS` | 周期「审计摄取→闭月结算」驱动（生产 true/300s） |
+| `METERING_AUTO_CREATE_TABLES` | 生产 false——schema 唯一事实源=alembic 链（initContainer upgrade head） |
 | `LOGTO_ISSUER` | 控制台登录（4.3）：`https://auth.finddatatech.cloud`（issuer 取其 + /oidc） |
 | `LOGTO_CLIENT_ID` | 控制台 SPA 应用 client_id（Logto 侧新建，见下「外部配置」） |
 | `LOGTO_RESOURCE` | 控制台请求的 API resource（默认 `https://mcp.finddatatech.cloud/api`，须与 registry `LOGTO_M2M_RESOURCE` 一致） |

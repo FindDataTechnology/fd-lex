@@ -411,3 +411,27 @@ def test_bindings_resolver_and_multi_identity_merge() -> None:
     assert len(report.rows) == 1
     row = report.rows[0]
     assert row.is_clean, (row.difference_micro, row.units)
+
+
+def test_pg_period_dialect_expression() -> None:
+    """PG 方言：period 提取用 to_char + AT TIME ZONE 'UTC'（防会话时区月错位）。"""
+    from sqlalchemy.dialects import postgresql
+    from sqlalchemy import create_engine
+
+    from fd_lex_api.billing.metering_source import _period_expr
+
+    pg_engine = create_engine("postgresql+psycopg://u:p@localhost/db")
+    sql = str(
+        _period_expr(pg_engine).compile(
+            dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True}
+        )
+    )
+    assert "to_char" in sql
+    assert "timezone" in sql.lower()
+    assert "YYYY-MM" in sql
+
+    sqlite_engine = create_engine("sqlite://")
+    sqlite_sql = str(
+        _period_expr(sqlite_engine).compile(compile_kwargs={"literal_binds": True})
+    )
+    assert "strftime" in sqlite_sql

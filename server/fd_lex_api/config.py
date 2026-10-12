@@ -17,11 +17,16 @@
   不敏感）。命中的调用 → credential_track=platform（平台自用，不进客户
   账单），否则 customer。
 - ``REGISTRY_MONGO_URI`` / ``REGISTRY_MONGO_DB`` /
-  ``REGISTRY_MONGO_COLLECTION``：registry Mongo 审计流直读（可选路径）；
-  URI 未配置时该路径禁用。
+  ``REGISTRY_MONGO_COLLECTION``：registry Mongo 审计流直读（生产消费链，
+  2026-10-12 落地）；URI 未配置时该路径禁用。
+- ``METERING_SERVER_ALLOWLIST``：lex 计费域 server 白名单（逗号分隔）。
+  registry 审计流含全舰队事件——不设白名单会把 wire/facet 流量吸进
+  lex 计量表（结算报告刷 skipped_no_customer 噪声）。空串=不过滤（不推荐）。
+- ``METERING_DRIVER_ENABLED`` / ``METERING_DRIVER_INTERVAL_SECONDS``：
+  周期「审计摄取 → 闭月结算」驱动（默认关，生产部署 env 开闸）。
 - ``METERING_POLL_LIMIT``：audit 流单轮消费批量上限，默认 500。
 - ``METERING_AUTO_CREATE_TABLES``：启动时 create_all（默认 true，开发
-  便利；生产迁移链由主代理收敛后可关闭）。
+  便利；生产迁移链就位后置 false——schema 唯一事实源=alembic 链）。
 """
 
 from __future__ import annotations
@@ -45,8 +50,14 @@ class Settings(BaseSettings):
     registry_mongo_uri: str | None = None
     registry_mongo_db: str | None = None
     registry_mongo_collection: str = "audit_events"
+    #: lex 计费域 server 白名单（空=不过滤，见模块 docstring）。
+    #: 生产值：fd-legal-search-mcp,virtual/lex-legal（含 law-bench 对外子集时追加）。
+    metering_server_allowlist: str = ""
     metering_poll_limit: int = 500
     metering_auto_create_tables: bool = True
+    #: 周期计量驱动（审计摄取 + 闭月结算）；默认关，生产 env 开闸。
+    metering_driver_enabled: bool = False
+    metering_driver_interval_seconds: int = 300
 
     # --- 分发面（/api/distribution，lex-platform-v1 6.3） --------------------
     # 交付包（Distribution）目录：packer 产出的 bundle 目录树（只读扫描）。
@@ -87,6 +98,12 @@ class Settings(BaseSettings):
             name.strip().lower() for name in self.platform_identities.split(",") if name.strip()
         )
 
+    def metering_server_allowlist_set(self) -> frozenset[str]:
+        """lex 计费域 server 白名单（精确匹配 server_name；空=不过滤）。"""
+        return frozenset(
+            name.strip() for name in self.metering_server_allowlist.split(",") if name.strip()
+        )
+
     def logto_oidc_base(self) -> str:
         """Logto issuer（去尾斜杠）；空串=未配置。"""
         return self.logto_issuer.strip().rstrip("/")
@@ -114,7 +131,10 @@ class Settings(BaseSettings):
             "platform_identities": sorted(self.platform_identity_set()),
             "registry_mongo_configured": bool(self.registry_mongo_uri and self.registry_mongo_db),
             "registry_mongo_collection": self.registry_mongo_collection,
+            "metering_server_allowlist": sorted(self.metering_server_allowlist_set()),
             "metering_poll_limit": self.metering_poll_limit,
+            "metering_driver_enabled": self.metering_driver_enabled,
+            "metering_driver_interval_seconds": self.metering_driver_interval_seconds,
             "distribution_root": self.distribution_root,
             "distribution_api_token_configured": bool(self.distribution_api_token),
             "logto_configured": bool(self.logto_oidc_base() and self.logto_client_id),

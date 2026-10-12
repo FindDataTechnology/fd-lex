@@ -22,6 +22,7 @@ import re
 from datetime import datetime, timezone
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     DateTime,
     ForeignKey,
@@ -77,7 +78,9 @@ class Plan(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     code: Mapped[str] = mapped_column(String(32), unique=True, nullable=False)
     name: Mapped[str] = mapped_column(String(64), nullable=False)
-    monthly_price_micro: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    #: 微元金额用 BigInteger：PG int4 上限 21.47 亿微元（¥2147）——月费大档会溢出
+    #: （wire cutover 2026-10-11 实证抓修同款缺陷；SQLite 动态 int8 掩盖）
+    monthly_price_micro: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utcnow
@@ -116,7 +119,9 @@ class PlanQuota(Base):
     plan_id: Mapped[int] = mapped_column(ForeignKey("billing_plans.id"), nullable=False)
     unit: Mapped[str] = mapped_column(String(16), nullable=False)
     included_quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    overage_unit_price_micro: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    #: 超额单价（微元/单位）同用 BigInteger：¥0.01/次 = 10000 微元尚安全，
+    #: 但高单价单位（如 ¥0.5/行 = 500000 微元 × 大批量）与统一口径取 BigInteger
+    overage_unit_price_micro: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow
     )
@@ -167,7 +172,8 @@ class LedgerEntry(Base):
     kind: Mapped[str] = mapped_column(String(16), nullable=False)
     unit: Mapped[str | None] = mapped_column(String(16), nullable=True)
     quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    amount_micro: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    #: 微元金额（BigInteger 同 Plan 口径——PG int4 会溢出，SQLite 无感）
+    amount_micro: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
     period: Mapped[str] = mapped_column(String(7), nullable=False, index=True)
     idempotency_key: Mapped[str] = mapped_column(String(191), unique=True, nullable=False)
     source_ref: Mapped[str | None] = mapped_column(String(191))

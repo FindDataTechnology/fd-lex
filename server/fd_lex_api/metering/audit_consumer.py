@@ -87,6 +87,11 @@ class MongoAuditSource:
     def fetch(self, since: datetime | None, limit: int) -> list[dict[str, Any]]:
         collection = self._ensure_collection()
         query: dict[str, Any] = {"log_type": AUDIT_LOG_TYPE}
+        allowlist = get_settings().metering_server_allowlist_set()
+        if allowlist:
+            # lex 计费域白名单：审计流是全舰队共享的（wire/facet/… 也在流里），
+            # 不过滤会把别线流量吸进 lex 计量表。服务端侧过滤（$in）省流量。
+            query["mcp_server.name"] = {"$in": sorted(allowlist)}
         if since is not None:
             # 实测（2026-10-06 首客开户演练）：audit_events_default.timestamp 为
             # BSON date（naive UTC）。曾因 json 序列化引号误判为字符串并改成

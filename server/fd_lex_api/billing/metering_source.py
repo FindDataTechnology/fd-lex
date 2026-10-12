@@ -9,8 +9,10 @@
 - ``caller``：调用者身份（identity.username）——结算聚合的「客户身份映射」
   键，billing 侧由 resolver 映射到 Customer（v1 暂用 sub2api_user_id 承载
   该映射，正式的 Logto username ↔ Customer 映射落地前可注入自定义 resolver）
-- ``event_timestamp``：period（YYYY-MM）由其派生（SQLite strftime；PG 需换
-  date_trunc/to_char——生产化时在此一处调整）
+- ``event_timestamp``：period（YYYY-MM）由其派生。**方言适配（2026-10-12
+  接客 PG 迁移）**：SQLite 用 ``strftime('%Y-%m')``、PostgreSQL 用
+  ``to_char(..., 'YYYY-MM')``——按 engine.dialect.name 分支，测试（sqlite）
+  与生产（PG）同源同语义。
 - ``credential_track``：'customer' 才计费（platform=平台服务凭据归集，
   不进客户账单）
 - ``quantity`` × ``unit``：双单位计费唯一依据（line=行、call=次、token 预留）
@@ -124,7 +126,7 @@ class SqlMeteringSource:
             )
             .where(
                 metering_records.c.credential_track == CUSTOMER_TRACK,
-                func.strftime("%Y-%m", metering_records.c.event_timestamp) == period,
+                _period_expr(self._engine) == period,
             )
             .group_by(metering_records.c.caller, metering_records.c.unit)
         )
@@ -134,3 +136,16 @@ class SqlMeteringSource:
             MeteringUsage(customer_ref=r.customer_ref, unit=r.unit, quantity=int(r.quantity))
             for r in rows
         ]
+
+
+def _period_expr(engine: Engine):
+    """period（YYYY-MM）提取表达式，按方言分支（sqlite 测试 / PG 生产）。
+
+    PG 的 ``to_char`` 需显式时区——event_timestamp 为 timestamptz，直接
+    to_char 会按会话 TimeZone 渲染，跨时区边界月错位；先 AT TIME ZONE 'UTC'
+    固定为 UTC 月（与 sqlite strftime 的 naive-UTC 语义对齐）。
+    """
+    column = metering_records.c.event_timestamp
+    if engine.dialect.name == "postgresql":
+        return func.to_char(func.timezone("UTC", column), "YYYY-MM")
+    return func.strftime("%Y-%m", column)

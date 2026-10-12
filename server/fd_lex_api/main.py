@@ -44,9 +44,15 @@ def _init_tables() -> None:
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    """启动钩子：建表（幂等，可经 METERING_AUTO_CREATE_TABLES 关闭）。"""
+    """启动钩子：建表（幂等，可经 METERING_AUTO_CREATE_TABLES 关闭）+ 计量驱动。"""
     _init_tables()
-    yield
+    from fd_lex_api.metering.driver import start_metering_driver, stop_metering_driver
+
+    start_metering_driver()
+    try:
+        yield
+    finally:
+        stop_metering_driver()
 
 
 app = FastAPI(

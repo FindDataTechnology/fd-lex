@@ -16,6 +16,9 @@ dependencies = [
     "httpx>=0.27",
     # 控制台 Logto ID token 本地校验（JWKS/iss/aud/exp）；crypto extra 供 ES384。
     "pyjwt[crypto]>=2.8",
+    # 生产库=PG（接客硬前提，2026-10-12 迁移）：psycopg3 驱动 + alembic 迁移链。
+    "psycopg[binary]>=3.1",
+    "alembic>=1.13",
 ]
 
 [project.optional-dependencies]

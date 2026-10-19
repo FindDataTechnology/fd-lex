@@ -95,16 +95,20 @@ USAGE_RE = re.compile(r"(已服务|已处理|累计调用|调用量达|处理了
 
 
 STYLE_BLOCK_RE = re.compile(r"<(style|script)\b.*?</\1>", re.DOTALL | re.IGNORECASE)
+FENCE_BLOCK_RE = re.compile(r"^```.*?^```", re.DOTALL | re.MULTILINE)
 HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
 
 
 def _visible(path: Path, text: str) -> str:
     """HTML 剥离样式/脚本块与注释（按块保留行数，行号近似不变）。"""
-    if path.suffix.lower() != ".html":
-        return text
 
     def _blank(m):
         return "\n" * m.group().count("\n")
+
+    text = FENCE_BLOCK_RE.sub(_blank, text)  # markdown 代码围栏：示例代码非宣传口径
+
+    if path.suffix.lower() != ".html":
+        return text
 
     return HTML_COMMENT_RE.sub(_blank, STYLE_BLOCK_RE.sub(_blank, text))
 

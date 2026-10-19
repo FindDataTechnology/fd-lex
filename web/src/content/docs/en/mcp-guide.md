@@ -98,7 +98,7 @@ Behind the endpoint sits the legal-search service fd-legal-search-mcp (live vers
 | Statutes and regulations | `law_search` / `law_read` / `law_semantic_search` / `law_reference` | 32,296 statutes [N1]; 364,916 article-level chunks [N2] |
 | Judgment documents (similar cases) | `wenshu_search` / `wenshu_read` | 37,001,012 judgments [N3][N4], measured in the live database on 2026-10-07 and growing with increments <!-- audit-exempt: as-of date --> |
 | Guiding cases | `guide_cases_search` / `guide_cases_read` | 278 cases + 15 batch notices [N5] |
-| Five-source corpus | `legal_docs_search` / `legal_docs_read` | 30,151 documents [N6] |
+| Five-source corpus | `legal_docs_search` / `legal_docs_read` | 47,256 documents [N6] |
 
 Conventions that apply to all tools:
 

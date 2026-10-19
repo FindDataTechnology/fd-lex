@@ -98,7 +98,7 @@ curl -sS -X POST https://lex.finddatatech.cloud/mcp \
 | 法律法规 | `law_search` / `law_read` / `law_semantic_search` / `law_reference` | 32,296 部 [N1]；法条切片 364,916 条 [N2] |
 | 裁判文书（类案） | `wenshu_search` / `wenshu_read` | 37,001,012 篇 [N3][N4]，截至 2026-10-07 库侧实测，随增量持续增长 <!-- audit-exempt: 口径日期 --> |
 | 指导案例 | `guide_cases_search` / `guide_cases_read` | 278 篇案例 + 15 条批次通知 [N5] |
-| 五源语料 | `legal_docs_search` / `legal_docs_read` | 30,151 篇 [N6] |
+| 五源语料 | `legal_docs_search` / `legal_docs_read` | 47,256 篇 [N6] |
 
 通用约定（适用于全部工具）：
 

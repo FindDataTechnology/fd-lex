@@ -14,11 +14,11 @@
     "lede": "Lex is the legal-technology product line of FindData: statute and case data, contract-intelligence apps, in-house legal models and the execution base, delivered as one versioned distribution package — one capability set across two hosts, our cloud or your machine room.",
     "stats": {
       "wenshu": {
-        "value": "10.5M",
+        "value": "37M",
         "label": "court judgments"
       },
       "catalog": {
-        "value": "32,275",
+        "value": "32,296",
         "label": "statute catalog entries"
       },
       "tools": {

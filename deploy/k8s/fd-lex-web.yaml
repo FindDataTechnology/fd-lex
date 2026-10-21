@@ -25,7 +25,7 @@ spec:
     spec:
       containers:
         - name: web
-          image: ccr.ccs.tencentyun.com/finddata-business/fd-lex-web:sha-289851b # 萬星副驾意图执行器（navigate/refresh 白名单+init 声明）；fd-lex 0c0af13；digest 1b204e43
+          image: ccr.ccs.tencentyun.com/finddata-business/fd-lex-web:sha-84724f2 # WIDGET_SLUG 切正式识律 copilot（lex-console-copilot）；fd-lex 119b254；digest b5e72c01
           imagePullPolicy: IfNotPresent
           ports:
             - name: http

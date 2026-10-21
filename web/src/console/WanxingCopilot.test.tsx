@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter, useLocation } from 'react-router-dom'
 
 import { CONSOLE_TABS } from './ConsoleLayout'
-import { WanxingCopilot } from './WanxingCopilot'
+import { WanxingCopilot, WIDGET_SLUG } from './WanxingCopilot'
 
 const WANXING_ORIGIN = 'https://wanxing.finddatatech.cloud'
 
@@ -41,7 +41,7 @@ function mountCopilot() {
   // jsdom 的 iframe 没有真实 contentWindow——替换为可断言的假窗口
   Object.defineProperty(frame, 'contentWindow', { value: { postMessage: postSpy }, configurable: true })
   const fromWidget = (data: Record<string, unknown>, origin = WANXING_ORIGIN) =>
-    window.dispatchEvent(new MessageEvent('message', { origin, data: { slug: 'packs-vtdpsnmtw6oq9i99mbhbdw-pack-demo-fingpt', ...data } }))
+    window.dispatchEvent(new MessageEvent('message', { origin, data: { slug: WIDGET_SLUG, ...data } }))
   const results = () => replies.filter((r) => r.type === 'wx-copilot-intent-result')
   return { replies, locPath, fromWidget, results }
 }

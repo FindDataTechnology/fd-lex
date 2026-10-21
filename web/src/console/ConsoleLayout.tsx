@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, NavLink } from 'react-router-dom'
+import { WanxingCopilot } from './WanxingCopilot'
 
 export type ConsoleTab = 'overview' | 'credentials' | 'usage' | 'billing' | 'quota'
 
@@ -90,6 +91,7 @@ export function ConsoleLayout({
       </aside>
 
       <section className="mt-8 min-w-0 lg:col-span-9 lg:mt-0 lg:pl-8">{children}</section>
+      <WanxingCopilot />
     </div>
   )
 }

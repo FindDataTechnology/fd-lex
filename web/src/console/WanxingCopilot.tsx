@@ -16,7 +16,7 @@ import { CONSOLE_TABS } from './ConsoleLayout'
 import { loadSession } from './auth'
 
 const WANXING_ORIGIN = 'https://wanxing.finddatatech.cloud'
-const WIDGET_SLUG = 'packs-vtdpsnmtw6oq9i99mbhbdw-pack-demo-fingpt'
+const WIDGET_SLUG = 'packs-xfyxvzonqfelnfigm0djvw-lex-console-copilot'
 
 // 意图白名单：navigate 只认 CONSOLE_TABS 的路由本身（无查询串、无 /admin），
 // refresh 无参数。动词表在 init 里声明给 widget——widget 只渲染已声明的动词。

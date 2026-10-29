@@ -72,7 +72,10 @@ describe('Docs pages', () => {
     expect(doc).toBeTruthy()
     expect(screen.getByRole('heading', { level: 1, name: doc!.title })).toBeTruthy()
     expect(screen.getByText(doc!.description)).toBeTruthy()
-    expect(screen.getByText(doc!.body.trim())).toBeTruthy()
+    // Markdown 把 body 拆成多个元素（h2/表格/代码块……），整段 getByText 永远匹配不到
+    // 单一元素（此断言自 054a6d4 引入即红）。改为：body 的首个 ## 小节标题必须以 h2 渲染。
+    const firstHeading = doc!.body.trim().split('\n')[0].replace(/^#{1,6}\s+/, '')
+    expect(screen.getByRole('heading', { level: 2, name: firstHeading })).toBeTruthy()
     expect(screen.getByRole('link', { name: /返回文档索引/ }).getAttribute('href')).toBe('/docs')
   })
 

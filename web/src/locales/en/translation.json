@@ -50,7 +50,8 @@
   },
   "badge": {
     "both": "Dual-host",
-    "privateOnly": "On-prem only"
+    "privateOnly": "On-prem only",
+    "preview": "In preview · coming soon"
   },
   "capabilities": {
     "title": "Capability catalog",
@@ -84,6 +85,20 @@
         ],
         "host": "both",
         "note": ""
+      },
+      "esignature": {
+        "name": "Contract e-signature",
+        "latin": "E-Signature",
+        "desc": "One chain from review to evidence: anchor the finalized version by hash, send signing links, and seal only after identity and signing-intent verification.",
+        "points": [
+          "Review, final draft, signing and evidence in one flow",
+          "Identity and signing-intent verification via a licensed provider",
+          "Hash-anchored final version; contract text never leaves your side",
+          "Applicability gate for documents excluded by law",
+          "Certificate chain, trusted timestamp and audit trail — tamper-evident"
+        ],
+        "status": "preview",
+        "note": "In preview: the signing leg is being integrated with a licensed e-signature provider; cloud and on-prem signing open after sandbox validation. Article 14 of the PRC E-Signature Law: a reliable electronic signature has the same legal effect as a handwritten signature or seal."
       },
       "models": {
         "name": "In-house legal models",

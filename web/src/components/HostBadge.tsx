@@ -58,4 +58,21 @@ function HostBadge({ host, variant = 'light', label, className = '' }: HostBadge
   )
 }
 
+/**
+ * 内测状态徽标：尚未在任一宿主开通、但已有明确路径的能力（如电子签正在接入持牌服务商）。
+ * 朱红仅用于「仅私有化」与品牌印章两种语义，故内测态用中性的虚线描边，不复用 seal。
+ */
+export function PreviewBadge() {
+  const { t } = useTranslation()
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-line-strong px-2.5 py-0.5 text-xs font-medium text-ink-soft">
+      <svg aria-hidden="true" width="14" height="8" viewBox="0 0 14 8">
+        <circle cx="3.5" cy="4" r="2.1" fill="none" stroke="currentColor" strokeWidth="1" strokeDasharray="1.6 1.4" />
+        <circle cx="10.5" cy="4" r="2.6" fill="currentColor" />
+      </svg>
+      {t('badge.preview')}
+    </span>
+  )
+}
+
 export default HostBadge

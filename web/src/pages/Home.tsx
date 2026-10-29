@@ -2,11 +2,11 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import type { TFunction } from 'i18next'
 
-import HostBadge, { type CapabilityHost } from '../components/HostBadge'
+import HostBadge, { type CapabilityHost, PreviewBadge } from '../components/HostBadge'
 import Layout from '../components/Layout'
 import StackDiagram from '../components/StackDiagram'
 
-const CAPABILITY_KEYS = ['retrieval', 'contract', 'models', 'distribution', 'api'] as const
+const CAPABILITY_KEYS = ['retrieval', 'contract', 'esignature', 'models', 'distribution', 'api'] as const
 const STAT_KEYS = ['wenshu', 'catalog', 'tools'] as const
 const PRICING_DIMENSIONS = ['units', 'quota', 'overage', 'updates', 'deploy'] as const
 const DOC_SECTIONS = ['deploy', 'airgap', 'upgrade', 'updates', 'offline', 'tiers'] as const
@@ -97,6 +97,9 @@ function Capabilities() {
           <ul className="divide-y divide-line border-b-2 border-ink">
             {CAPABILITY_KEYS.map((key) => {
               const host = t(`capabilities.items.${key}.host`) as CapabilityHost
+              const status = t(`capabilities.items.${key}.status`, {
+                defaultValue: '',
+              })
               const points = tArray(t, `capabilities.items.${key}.points`)
               const note = t(`capabilities.items.${key}.note`)
               return (
@@ -126,9 +129,13 @@ function Capabilities() {
                     </ul>
                   </div>
                   <div className="lg:col-span-3">
-                    <HostBadge host={host} />
-                    {note !== '' && host === 'private' && (
-                      <p className="mt-2.5 max-w-[16rem] text-xs leading-relaxed text-seal">
+                    {status === 'preview' ? <PreviewBadge /> : <HostBadge host={host} />}
+                    {note !== '' && (host === 'private' || status === 'preview') && (
+                      <p
+                        className={`mt-2.5 max-w-[16rem] text-xs leading-relaxed ${
+                          status === 'preview' ? 'text-ink-soft' : 'text-seal'
+                        }`}
+                      >
                         {note}
                       </p>
                     )}

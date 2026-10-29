@@ -28,6 +28,18 @@
 | `ADMIN_ROLES` | 后台 Logto 角色名（默认 `lex-admin`；未在 Logto 建角色则只能走 X-Admin-Token） |
 | `REGISTRY_BASE_URL` | 凭据代理目标（默认 `https://mcp.finddatatech.cloud`） |
 | `CONSOLE_ORIGIN` | `https://lex.finddatatech.cloud`（回跳提示；不参与鉴权判定） |
+| `ESIGN_FILE_STORE_DIR` | 电子签文件仓（默认 `./esign_files`；生产=`/data/esign` → PVC `lex-esign-files`）。合同全文只落客户侧，**卷必须纳入备份** |
+| `ESIGN_SIGNER_SESSION_TTL_SECONDS` | 签署人 H5 会话有效期（默认 1800s） |
+| `ESIGN_PROVIDER` | 签署腿适配器（**未设即 fail-closed**：发起如实报「签署腿未配置」；`stub` 仅开发/测试；厂商值待选型 spike 通过后接入，见 `docs/ESIGN-PROVIDER-ONBOARDING.md`） |
+
+### 电子签（lex-contract-esignature）部署要点
+
+- 签署人链接域名=客户侧公网入口 `https://lex.finddatatech.cloud/api/esignature/p/*`
+  （复用既有 `/api/*` Caddy 反代；私有化包内由客户自己的前置代理提供）。
+
+- `lex-esign-files` PVC 承载合同全文与出证包 zip：**丢卷=待签任务无法预览、已签任务无法下载出证包**；备份策略随客户备份制度。
+
+- `ESIGN_PROVIDER` 未配置时签署腿如实报错（不静默降级、不假报成功），属预期行为；配置厂商值前须先过 change tasks 组 1 的沙箱验收。
 
 ## 控制台/后台的外部配置清单（4.3/4.4，需人工在外部系统操作）
 

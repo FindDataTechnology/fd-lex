@@ -22,13 +22,14 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from .db import MeteringBase, utc_now
 
-#: 计量单位取值集合（v1：行/次；token 为模型 API 预留位）。
+#: 计量单位取值集合（v1：行/次；token 为模型 API 预留位；signing 为电子签按份）。
 #: 仅为应用层文档性常量——数据库列不加约束，扩展单位零迁移。
-UNITS: tuple[str, ...] = ("line", "call", "token")
+UNITS: tuple[str, ...] = ("line", "call", "token", "signing")
 
 UNIT_LINE = "line"    # 读取/检索类：按行（rows_returned 契约）
 UNIT_CALL = "call"    # 生成/评测类：按次（calls_used 戳）
 UNIT_TOKEN = "token"  # 预留：模型 API 按 token
+UNIT_SIGNING = "signing"  # 电子签：按完成签署的签署人份数（esignature 直写）
 
 #: 凭据轨道的合法取值（客户轨计费、平台轨归集不结算）
 TRACK_CUSTOMER = "customer"

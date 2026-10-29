@@ -66,6 +66,18 @@ class Settings(BaseSettings):
     # v1 客户侧定时任务共用该令牌；客户级凭据（wgk-）接 Logto 后演进（如实标注为后续项）。
     distribution_api_token: str | None = None
 
+    # --- 电子签（/api/console/esignature + /api/esignature/s，lex-contract-esignature）
+    # 签署腿 provider（可插拔 adapter，见 esignature/adapter.py）。空串=未配置：
+    # 发起 fail-closed（409「签署腿未配置」），绝不静默降级为无证明力的假签；
+    # ``stub``=进程内确定性假件（开发/测试专用，其出证无司法效力）；真实厂商
+    # adapter 待选型 spike 后接入（change tasks 组 1/3.2）。
+    esign_provider: str = ""
+    # 内容寻址文件仓：合同全文只落客户侧本地目录（sha256 即文件名），
+    # 跨出客户侧的仅限哈希+身份记录+签名值（spec「合同全文不出客户侧」）。
+    esign_file_store_dir: str = "./esign_files"
+    # 签署人 H5 会话有效期（秒）：打开链接后实名/意愿/落签须在该窗口内完成。
+    esign_signer_session_ttl_seconds: int = 1800
+
     # --- 控制台（/console）与运营后台（/admin）面 ---------------------------
     # Logto OIDC：控制台 SPA 走 authorization code + PKCE，服务端只做 ID token
     # 校验（JWKS/iss/aud）与身份读取——不落任何 Logto 客户端密钥。
@@ -137,6 +149,9 @@ class Settings(BaseSettings):
             "metering_driver_interval_seconds": self.metering_driver_interval_seconds,
             "distribution_root": self.distribution_root,
             "distribution_api_token_configured": bool(self.distribution_api_token),
+            "esign_provider": self.esign_provider or None,
+            "esign_file_store_dir": self.esign_file_store_dir,
+            "esign_signer_session_ttl_seconds": self.esign_signer_session_ttl_seconds,
             "logto_configured": bool(self.logto_oidc_base() and self.logto_client_id),
             "logto_issuer": self.logto_oidc_base(),
             "logto_client_id_configured": bool(self.logto_client_id),

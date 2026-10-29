@@ -1,4 +1,4 @@
-"""Alembic 环境：目标元数据=计量/账本/控制台三域 ORM 声明的并集。
+"""Alembic 环境：目标元数据=计量/账本/控制台/电子签四域 ORM 声明的并集。
 
 连接串优先级：``-x db_url=...`` > ``DATABASE_URL`` env > 默认 sqlite 开发库。
 生产（PG）由部署侧以 DATABASE_URL 注入；测试/本地可显式 -x 指定。
@@ -14,10 +14,12 @@ from sqlalchemy import engine_from_config, pool
 
 from fd_lex_api.billing import Base as BillingBase
 from fd_lex_api.console_api.models import ConsoleBase
+from fd_lex_api.esignature.models import EsignBase
 from fd_lex_api.metering.db import MeteringBase
 from fd_lex_api.metering import models as _metering_models  # noqa: F401 —— 注册映射
 from fd_lex_api.billing import models as _billing_models  # noqa: F401
 from fd_lex_api.console_api import models as _console_models  # noqa: F401
+from fd_lex_api.esignature import models as _esignature_models  # noqa: F401
 
 config = context.config
 
@@ -40,7 +42,7 @@ class _MergedMeta:
         from sqlalchemy import MetaData
 
         merged = MetaData()
-        for base in (MeteringBase, BillingBase, ConsoleBase):
+        for base in (MeteringBase, BillingBase, ConsoleBase, EsignBase):
             for table in base.metadata.tables.values():
                 if table.key not in merged.tables:
                     table.to_metadata(merged)

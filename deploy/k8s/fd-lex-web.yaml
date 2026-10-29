@@ -25,7 +25,7 @@ spec:
     spec:
       containers:
         - name: web
-          image: ccr.ccs.tencentyun.com/finddata-business/fd-lex-web:sha-5e83e0a # 品牌更名 良律 LiangLü（识律/Lex 降为家族名）；源 fd-lex 21179dd；T1 快照通道出片 scs001/fd-lex-images 5e83e0a
+          image: ccr.ccs.tencentyun.com/finddata-business/fd-lex-web:sha-c4b0953 # 头部印章「识律」→「良律」；源 fd-lex ecab2c6；T1 快照通道出片 scs001/fd-lex-images c4b0953
           imagePullPolicy: IfNotPresent
           ports:
             - name: http

@@ -25,7 +25,7 @@ spec:
     spec:
       containers:
         - name: web
-          image: ccr.ccs.tencentyun.com/finddata-business/fd-lex-web:sha-b24b52f # 电子签能力卡（内测态）+ Docs 测试修；源 fd-lex b0a6d74；T1 快照通道出片 scs001/fd-lex-images b24b52f
+          image: ccr.ccs.tencentyun.com/finddata-business/fd-lex-web:sha-5e83e0a # 品牌更名 良律 LiangLü（识律/Lex 降为家族名）；源 fd-lex 21179dd；T1 快照通道出片 scs001/fd-lex-images 5e83e0a
           imagePullPolicy: IfNotPresent
           ports:
             - name: http

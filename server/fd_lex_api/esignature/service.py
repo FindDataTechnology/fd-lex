@@ -123,6 +123,11 @@ def create_task(
         )
     _event(db, task.id, actor=customer_identity, action="task_created",
            detail={"sha256": sha, "signers": len(signers), "category": category})
+    # autoflush=False：刚 add 的 signer 行必须先 flush 才对本会话后续查询可见
+    # ——initiate 的链接生成循环按 task_id 查 EsignSigner；同会话连跑
+    # create+initiate（机器通道复合端点）时漏 flush = links=[] 死任务
+    # （2026-11-06 生产 E2E 实证，跨请求控制台流不受影响）。
+    db.flush()
     return task
 
 

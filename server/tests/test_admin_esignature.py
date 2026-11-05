@@ -298,3 +298,18 @@ def test_admin_token_means_nothing_on_signer_surface(client):
         "/api/esignature/s/fake-token/sign",
         json={"intent_method": "face"}, headers=headers,
     ).status_code in (401, 403, 404)
+
+
+def test_initiate_links_issued_same_session(client):
+    """复合端点同会话连跑 create+initiate：链接必须发给每名签署人
+    （autoflush=False 漏 flush 的回归锁——2026-11-06 生产 E2E 实证缺陷）。"""
+    resp = _initiate(client)
+    assert resp.status_code == 200, resp.text
+    from fd_lex_api.esignature.models import EsignSigner
+    from fd_lex_api.metering.db import get_session
+
+    with get_session() as db:
+        signers = db.scalars(select(EsignSigner)).all()
+    assert len(signers) == 2
+    # 每名签署人都领到链接（link_token_hash 非空）
+    assert all(s.link_token_hash for s in signers)

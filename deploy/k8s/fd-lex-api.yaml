@@ -62,6 +62,10 @@ spec:
             # （发起如实报「签署腿未配置」），厂商连接器凭证待选型 spike 后经 Secret 注入。
             - name: ESIGN_FILE_STORE_DIR
               value: /data/esign
+            # TEMP: lex-contract-esignature 7.1/8.1 stub 验证窗口（出证包下载+篡改验证
+            # 需 adapter 在位）。跑完即撤——撤除提交紧随本提交，勿在此态停留。
+            - name: ESIGN_PROVIDER
+              value: stub
           volumeMounts:
             - name: esign-files
               mountPath: /data/esign

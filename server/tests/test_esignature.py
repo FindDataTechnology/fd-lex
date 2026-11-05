@@ -229,6 +229,8 @@ def test_two_signers_complete_and_evidence(client):
         assert {"manifest.json", "events.ndjson", "provider_report.json"} <= names
         manifest = json.loads(zf.read("manifest.json"))
     assert manifest["anchor_sha256"] == task["anchor_sha256"]
+    # stub 出证包如实标注（spec Req 6「SHALL 如实标注『内测假件、无司法效力』」）
+    assert "内测假件" in manifest.get("annotation", "") and "无司法效力" in manifest.get("annotation", "")
     cards = client.get(f"/api/console/esignature/tasks/{task_id}/evidence/cards").json()["cards"]
     assert len(cards) == 2
     assert cards[0]["编号"] == "SP001" and cards[0]["置信度"] == "高"
@@ -371,6 +373,10 @@ def test_h5_page_render_and_server_side_denials(client):
     assert page.status_code == 200
     assert page.headers["content-type"].startswith("text/html")
     assert "电子签署" in page.text and _token_of(url) in page.text
+    # stub 通道如实标注内测态（spec Req 3：签署页面 SHALL 如实标注
+    # 「内测环境、无司法效力」，MUST NOT 出现持牌服务商效力归属）
+    assert "内测环境" in page.text and "无司法效力" in page.text
+    assert "持牌电子签名服务商通道完成" not in page.text
     # 不存在 token：页面级 404；撤销后：页面级 410 如实文案
     assert client.get("/api/esignature/p/nonexistent-token").status_code == 404
     assert client.post(f"/api/console/esignature/tasks/{task_id}/revoke").status_code == 200

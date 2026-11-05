@@ -69,10 +69,11 @@ padding:16px;margin-bottom:12px;display:none;font-size:1rem}
 <option value="sms">短信验证码确认</option>
 </select>
 <button id="btn-sign">确认签署</button></div>
-<div class="note">实名认证与签署意愿由持牌电子签名服务商通道完成</div>
+<div class="note" id="channel-note"></div>
 </div>
 <script>
 var TOKEN = "__TOKEN__";
+var NOTE_TEXT = "__NOTE_TEXT__";
 var API = "/api/esignature/s/" + TOKEN;
 var sess = "";
 function $(id){ return document.getElementById(id); }
@@ -144,13 +145,26 @@ window.onload = function(){
   $("btn-preview").onclick = preview;
   $("btn-verify").onclick = verify;
   $("btn-sign").onclick = sign;
+  var note = $("channel-note");
+  if (note) note.textContent = NOTE_TEXT;
 };
 </script></body></html>
 """
 
 
-def render_page(link_token: str) -> str:
-    return _PAGE_TMPL.replace("__TOKEN__", str(escape(link_token)))
+def render_page(link_token: str, beta: bool = False) -> str:
+    """签署页。beta=True（stub 通道）如实标注「内测环境、无司法效力」
+    （spec Req 3：能力目录与签署页面 SHALL 如实标注，MUST NOT 出现
+    实名/CA/时间戳的效力宣称）；真实厂商通道保留服务商归属句。"""
+    note = (
+        "内测环境：本页为 stub 通道（内测假件），实名与意愿为内测口径，出证无司法效力"
+        if beta
+        else "实名认证与签署意愿由持牌电子签名服务商通道完成"
+    )
+    return (
+        _PAGE_TMPL.replace("__TOKEN__", str(escape(link_token)))
+        .replace("__NOTE_TEXT__", note)
+    )
 
 
 def render_status(detail: str) -> str:

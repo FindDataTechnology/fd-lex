@@ -471,6 +471,11 @@ def _build_evidence_package(db: Session, task: EsignTask, provider) -> None:
     manifest["report_sha256"] = store.sha256_hex(
         json.dumps(report_raw, ensure_ascii=False, sort_keys=True).encode("utf-8")
     )
+    # stub 通道出证包如实标注（spec Req 6「stub 通道出证包 SHALL 如实标注
+    # 『内测假件、无司法效力』」）。标注只进识律 manifest——厂商报告原件
+    # 不改动（D6 双轨保留）。
+    if task.adapter_name == "stub":
+        manifest["annotation"] = "内测假件：stub 通道确定性假签，出证无司法效力"
     import io
 
     buf = io.BytesIO()

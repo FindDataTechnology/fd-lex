@@ -215,10 +215,11 @@ def signer_page(link_token: str, db: Session = Depends(get_db)):
     from . import h5
 
     try:
-        service.resolve_signer(db, link_token)
+        task, _signer = service.resolve_signer(db, link_token)
     except service.EsignError as exc:
         return HTMLResponse(h5.render_status(exc.detail), status_code=exc.status_code)
-    return HTMLResponse(h5.render_page(link_token))
+    # stub 通道如实标注内测态（spec Req 3「签署页面 SHALL 如实标注」）
+    return HTMLResponse(h5.render_page(link_token, beta=task.adapter_name == "stub"))
 
 
 @signer_router.get("/s/{link_token}")

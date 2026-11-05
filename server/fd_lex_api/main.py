@@ -83,6 +83,10 @@ app.include_router(billing_router)
 app.include_router(console_router)
 # 运营后台面（4.4）：内部令牌或 Logto 管理员角色
 app.include_router(admin_router)
+# 电子签机器通道（add-esignature-wire-actions）：动作闸四操作，require_admin 同闸
+from fd_lex_api.admin_api.esignature_routes import router as esignature_admin_router  # noqa: E402
+
+app.include_router(esignature_admin_router)
 # 交付包分发面（6.3）：manifest 列表/详情、pack 流式下载（Range）、sha256 校验
 app.include_router(distribution_router)
 # 电子签（lex-contract-esignature）：控制台面发起/出证/验证；签署人 H5 面落签

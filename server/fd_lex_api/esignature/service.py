@@ -266,6 +266,54 @@ def rotate_links(db: Session, task: EsignTask) -> list[dict[str, Any]]:
     return links
 
 
+# ------------------------------------------------------- 机器通道（wire 闸）----
+
+def nudge(db: Session, task: EsignTask) -> dict[str, Any]:
+    """机器通道催签：仅台账事件留痕。
+
+    机器面（/api/admin/esignature）**不外发、不回显签署链接**——链接明文只在
+    控制台面回显一次、换发走控制台，投递由人完成（spec「不代签机器红线」；
+    催签动作为 wire 侧 write 档，人类确认后才触达本函数）。
+    """
+    if task.status not in (TASK_PENDING, TASK_IN_PROGRESS):
+        raise EsignError(400, f"任务状态 {task.status} 不可催签")
+    _event(db, task.id, actor=task.customer_identity, action="nudged",
+           detail={"via": "machine"})
+    signers = db.scalars(
+        select(EsignSigner).where(EsignSigner.task_id == task.id).order_by(EsignSigner.seq)
+    ).all()
+    return {
+        "task_id": task.id,
+        "status": task.status,
+        "signers": [
+            {"seq": s.seq, "name": s.name, "status": s.status} for s in signers
+        ],
+        "reminded": True,
+    }
+
+
+def archive(db: Session, task: EsignTask) -> dict[str, Any]:
+    """机器通道归档：已完成任务幂等确保出证包，落台账事件，返回证据摘要。
+
+    出证包缺失时补建（复用 _build_evidence_package，同一厂商 adapter 取报告）；
+    已存在不重建（幂等，二次归档返回同摘要）。
+    """
+    if task.status != TASK_COMPLETED:
+        raise EsignError(400, f"任务状态 {task.status} 不可归档")
+    provider = adapter_mod.get_adapter()
+    if not task.evidence_path:
+        _build_evidence_package(db, task, provider)
+    _event(db, task.id, actor=task.customer_identity, action="archived",
+           detail={"via": "machine", "evidence_ready": bool(task.evidence_path)})
+    return {
+        "task_id": task.id,
+        "status": task.status,
+        "evidence_ready": bool(task.evidence_path),
+        "anchor_sha256": task.anchor_sha256,
+        "cards": len(evidence_cards(db, task)),
+    }
+
+
 # ------------------------------------------------------------- 签署人会话 ----
 
 def resolve_signer(db: Session, link_token: str) -> tuple[EsignTask, EsignSigner]:

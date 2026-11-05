@@ -33,7 +33,7 @@ spec:
       # 依赖 create_all（生产 METERING_AUTO_CREATE_TABLES=false）。
       initContainers:
         - name: migrate
-          image: ccr.ccs.tencentyun.com/finddata-business/fd-lex-api:sha-8a8df01
+          image: ccr.ccs.tencentyun.com/finddata-business/fd-lex-api:sha-31bc6ab
           imagePullPolicy: IfNotPresent
           command: ["alembic", "upgrade", "head"]
           envFrom:
@@ -44,7 +44,7 @@ spec:
             limits: { cpu: 100m, memory: 128Mi }
       containers:
         - name: api
-          image: ccr.ccs.tencentyun.com/finddata-business/fd-lex-api:sha-8a8df01
+          image: ccr.ccs.tencentyun.com/finddata-business/fd-lex-api:sha-31bc6ab
           imagePullPolicy: IfNotPresent
           ports:
             - name: http

@@ -12,12 +12,12 @@ metadata:
     app.kubernetes.io/part-of: finddata
     app.kubernetes.io/environment: production
 spec:
-  replicas: 1
+  replicas: 2
   # fd-prod compute-quota（limits.cpu 10 核）已顶格：surge 起新 Pod 会因配额
   # 被拒（2026-10-06 首客开户演练实测）——先撤旧再起新，并把 limit 收紧到 250m。
   strategy:
     type: RollingUpdate
-    rollingUpdate: { maxSurge: 0, maxUnavailable: 1 }
+    rollingUpdate: { maxSurge: 1, maxUnavailable: 0 }
   selector:
     matchLabels:
       app.kubernetes.io/name: fd-lex-api

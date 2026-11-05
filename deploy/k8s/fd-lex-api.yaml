@@ -58,8 +58,11 @@ spec:
           env:
             # 电子签编排面本地文件仓：合同全文只落客户侧（sha256 即文件名），
             # 跨出到签署服务商的只有哈希。卷丢失=待签任务不可预览、出证包不可下载，
-            # 生产必须持久卷+备份。ESIGN_PROVIDER 刻意不预置：未配置即 fail-closed
-            # （发起如实报「签署腿未配置」），厂商连接器凭证待选型 spike 后经 Secret 注入。
+            # 生产必须持久卷+备份。
+            # ESIGN_PROVIDER=stub（2026-11-06 收窄裁决）：云上=编排面+stub 内测通道，
+            # 如实内测口径（无司法效力），真厂商连接器凭证待选型 spike 后经 Secret 注入。
+            - name: ESIGN_PROVIDER
+              value: stub
             - name: ESIGN_FILE_STORE_DIR
               value: /data/esign
           volumeMounts:

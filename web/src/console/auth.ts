@@ -1,6 +1,16 @@
-// 控制台登录：Logto SPA authorization code + PKCE（浏览器侧完成，无客户端密钥）。
+// 控制台登录（change lex-web-shell-convergence 6.1：内核换成共享壳）。
 //
-// 跨域凭据方案（lex-platform-v1 4.3 的关键决策）：
+// 这个文件现在只是**适配层**：对外 API 与语义保持原样（ConsoleApp 与既有测试不动），
+// 真正的 PKCE / 续期 / 错误分流由 `src/kit/auth` 提供——全家族只有一份实现。
+//
+// 为什么保留适配层而不让页面直接调壳：
+// - 宿主的契约是「config 逐次传入 + state 不符抛 ConsoleAuthError」；
+//   壳的契约是「构造时带 config + state 不符返回 {ok:false}」。两者都合理，
+//   硬统一要改 12 个调用点与既有测试，收益不抵风险。
+// - 于是壳额外提供 `exchangeCode(code, verifier)` 低层原语：只做令牌交换，
+//   不动 window、不落存储，让宿主保留自己的 state 校验与错误语义。
+//
+// 跨域凭据方案（lex-platform-v1 4.3 的原决策，未变）：
 // - lex 域页面拿不到 mcp 域的会话 cookie，也没有共享密钥可用；因此控制台自带
 //   Logto 登录，拿到 ID token（证明身份）与 access token（aud=registry 接受的
 //   API resource，作凭据透传给 registry patch-keys）。
@@ -10,6 +20,13 @@
 //   前端如实显示阻塞态与缺失项，绝不假登录。
 
 import { apiUrl } from '../api/config'
+import {
+  AuthError,
+  createAuth,
+  type Auth,
+  type AuthConfig,
+  type AuthSession,
+} from '../kit/auth/index'
 
 export interface ConsoleAuthConfig {
   configured: boolean
@@ -50,6 +67,53 @@ export class ConsoleAuthError extends Error {
 export const SESSION_STORAGE_KEY = 'lex.console.session'
 export const PKCE_STORAGE_KEY = 'lex.console.pkce'
 
+/** 登录回跳地址（必须与 Logto 应用登记的 redirect URI 完全一致）。 */
+export function consoleCallbackUrl(): string {
+  return `${window.location.origin}/console/callback`
+}
+
+/** 把宿主 config 适配成壳实例（每次新建；除 sessionStorage 外无状态）。 */
+function authFor(config: ConsoleAuthConfig, returnTo?: string): Auth {
+  const kitConfig: AuthConfig = {
+    configured: config.configured,
+    issuer: config.issuer,
+    client_id: config.client_id,
+    resource: config.resource || undefined,
+    scopes: config.scopes,
+    organization_required: config.organization_required,
+    missing: config.missing,
+  }
+  return createAuth({
+    fetchConfig: async () => kitConfig,
+    redirectUri: consoleCallbackUrl(),
+    storagePrefix: 'lex.console',
+    tokenStorage: 'session',
+    defaultReturnTo: returnTo,
+  })
+}
+
+/** 壳的 AuthError → 宿主的 ConsoleAuthError（语义一一对应）。 */
+function asConsoleError(err: unknown): never {
+  if (err instanceof AuthError) {
+    throw new ConsoleAuthError(err.message, err.status, err.detail)
+  }
+  throw err
+}
+
+function toConsoleSession(session: AuthSession): ConsoleSession {
+  return {
+    idToken: session.idToken,
+    accessToken: session.accessToken ?? '',
+    refreshToken: session.refreshToken,
+    expiresAt: session.expiresAt,
+    identity: session.identity,
+    email: session.email,
+    name: session.name,
+    roles: session.roles ?? [],
+    organizations: session.organizations ?? [],
+  }
+}
+
 // ---------------------------------------------------------------------------
 // 配置
 // ---------------------------------------------------------------------------
@@ -57,20 +121,22 @@ export const PKCE_STORAGE_KEY = 'lex.console.pkce'
 export async function fetchAuthConfig(): Promise<ConsoleAuthConfig> {
   let response: Response
   try {
-    response = await fetch(apiUrl('/console/auth/config'), {
-      headers: { Accept: 'application/json' },
-    })
+    response = await fetch(apiUrl('/console/auth/config'))
   } catch (err) {
-    throw new ConsoleAuthError(`network error fetching auth config: ${(err as Error).message}`)
+    throw new ConsoleAuthError(
+      '无法读取登录配置',
+      undefined,
+      err instanceof Error ? err.message : String(err),
+    )
   }
   if (!response.ok) {
-    throw new ConsoleAuthError(`auth config ${response.status}`, response.status)
+    throw new ConsoleAuthError('无法读取登录配置', response.status)
   }
   return (await response.json()) as ConsoleAuthConfig
 }
 
 // ---------------------------------------------------------------------------
-// 会话存取（sessionStorage：关标签即失效；token 不落 localStorage）
+// 会话存取（沿用宿主校验：缺 idToken/accessToken 视为无会话）
 // ---------------------------------------------------------------------------
 
 export function loadSession(): ConsoleSession | null {
@@ -105,40 +171,30 @@ export function isExpired(session: ConsoleSession, skewMs = 60_000): boolean {
   return session.expiresAt <= Date.now() + skewMs
 }
 
+/** base64url 解码 JWT payload（仅展示用；校验在服务端）。实现来自壳。 */
+export function decodeJwtClaims(token: string): Record<string, unknown> {
+  return createAuth({
+    redirectUri: consoleCallbackUrl(),
+    storagePrefix: 'lex.console',
+    fetchConfig: async () => ({
+      configured: false,
+      issuer: '',
+      client_id: '',
+      scopes: [],
+      missing: [],
+    }),
+  }).decodeClaims(token)
+}
+
 // ---------------------------------------------------------------------------
 // PKCE 工具
 // ---------------------------------------------------------------------------
-
-function base64Url(bytes: Uint8Array): string {
-  let binary = ''
-  for (const byte of bytes) binary += String.fromCharCode(byte)
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
-}
-
-function randomString(length = 32): string {
-  const bytes = new Uint8Array(length)
-  crypto.getRandomValues(bytes)
-  return base64Url(bytes)
-}
-
-async function sha256(input: string): Promise<Uint8Array> {
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input))
-  return new Uint8Array(digest)
-}
 
 interface PkceState {
   state: string
   verifier: string
   nonce: string
   returnTo: string
-}
-
-function savePkce(value: PkceState): void {
-  try {
-    sessionStorage.setItem(PKCE_STORAGE_KEY, JSON.stringify(value))
-  } catch {
-    /* ignore */
-  }
 }
 
 function loadPkce(): PkceState | null {
@@ -158,170 +214,64 @@ function dropPkce(): void {
   }
 }
 
-/** 登录回跳地址（必须与 Logto 应用登记的 redirect URI 完全一致）。 */
-export function consoleCallbackUrl(): string {
-  return `${window.location.origin}/console/callback`
-}
-
-/** 发起登录：生成 PKCE 参数并跳转 Logto authorize。 */
-export async function beginLogin(
-  config: ConsoleAuthConfig,
-  returnTo = '/console',
-): Promise<void> {
+/** 发起登录：委托壳生成 PKCE 参数并跳转（secret 生成、nonce、returnTo 都在壳里）。 */
+export async function beginLogin(config: ConsoleAuthConfig, returnTo = '/console'): Promise<void> {
   if (!config.configured) {
+    // 保持宿主既有语义：未配置时报 503 而不是壳的机器码
     throw new ConsoleAuthError('login not configured on server', 503)
   }
-  const verifier = randomString(48)
-  const challenge = base64Url(await sha256(verifier))
-  const state = randomString(16)
-  const nonce = randomString(16)
-  savePkce({ state, verifier, nonce, returnTo })
-  const params = new URLSearchParams({
-    client_id: config.client_id,
-    response_type: 'code',
-    scope: config.scopes.join(' '),
-    redirect_uri: consoleCallbackUrl(),
-    state,
-    nonce,
-    code_challenge: challenge,
-    code_challenge_method: 'S256',
-  })
-  if (config.resource) params.set('resource', config.resource)
-  window.location.assign(`${config.issuer}/oidc/auth?${params.toString()}`)
-}
-
-function claimString(claims: Record<string, unknown>, key: string): string | undefined {
-  const value = claims[key]
-  return typeof value === 'string' && value.trim() ? value : undefined
-}
-
-function claimList(claims: Record<string, unknown>, key: string): string[] {
-  const value = claims[key]
-  if (typeof value === 'string') return [value]
-  if (Array.isArray(value)) return value.map((item) => String(item))
-  return []
-}
-
-/** base64url 解码 JWT payload（仅展示用；校验在服务端）。 */
-export function decodeJwtClaims(token: string): Record<string, unknown> {
   try {
-    const payload = token.split('.')[1]
-    if (!payload) return {}
-    const padded = payload.replace(/-/g, '+').replace(/_/g, '/')
-    const binary = atob(padded.padEnd(padded.length + ((4 - (padded.length % 4)) % 4), '='))
-    const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0))
-    return JSON.parse(new TextDecoder().decode(bytes)) as Record<string, unknown>
-  } catch {
-    return {}
-  }
-}
-
-interface TokenResponse {
-  id_token: string
-  access_token: string
-  refresh_token?: string
-  expires_in?: number
-}
-
-function sessionFromTokens(tokens: TokenResponse): ConsoleSession {
-  const claims = decodeJwtClaims(tokens.id_token)
-  const identity =
-    claimString(claims, 'username') ??
-    claimString(claims, 'email') ??
-    claimString(claims, 'sub') ??
-    'unknown'
-  const expiresIn = typeof tokens.expires_in === 'number' ? tokens.expires_in : 3600
-  return {
-    idToken: tokens.id_token,
-    accessToken: tokens.access_token,
-    refreshToken: tokens.refresh_token,
-    expiresAt: Date.now() + expiresIn * 1000,
-    identity,
-    email: claimString(claims, 'email'),
-    name: claimString(claims, 'name'),
-    roles: claimList(claims, 'roles'),
-    organizations: claimList(claims, 'organizations'),
-  }
-}
-
-async function tokenRequest(config: ConsoleAuthConfig, body: URLSearchParams): Promise<TokenResponse> {
-  let response: Response
-  try {
-    response = await fetch(`${config.issuer}/oidc/token`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body,
-    })
+    await authFor(config, returnTo).beginLogin()
   } catch (err) {
-    throw new ConsoleAuthError(`token endpoint unreachable: ${(err as Error).message}`)
+    asConsoleError(err)
   }
-  if (!response.ok) {
-    let detail: string | undefined
-    try {
-      const payload = (await response.json()) as { error_description?: string; error?: string }
-      detail = payload.error_description ?? payload.error
-    } catch {
-      /* ignore */
-    }
-    throw new ConsoleAuthError(`token exchange failed (${response.status})`, response.status, detail)
-  }
-  return (await response.json()) as TokenResponse
 }
 
-/** 回调页：校验 state、兑换 code、落会话；返回 returnTo 路径。 */
+/**
+ * 处理回跳：校验 state → 用壳换令牌 → 落会话。
+ * state 不符或兑换失败抛 ConsoleAuthError（宿主与既有测试依赖该语义）。
+ */
 export async function completeLogin(
   config: ConsoleAuthConfig,
   query: URLSearchParams,
-): Promise<{ returnTo: string; session: ConsoleSession }> {
-  const error = query.get('error')
-  if (error) {
-    throw new ConsoleAuthError(
-      `login failed: ${error}`,
-      400,
-      query.get('error_description') ?? undefined,
-    )
-  }
+): Promise<{ returnTo: string }> {
   const code = query.get('code')
   const state = query.get('state')
   const pkce = loadPkce()
-  if (!code || !state || !pkce || pkce.state !== state) {
-    throw new ConsoleAuthError('login state mismatch or missing PKCE state', 400)
+  if (!code || !state || !pkce || state !== pkce.state) {
+    dropPkce()
+    throw new ConsoleAuthError('state mismatch', 400)
   }
-  const body = new URLSearchParams({
-    grant_type: 'authorization_code',
-    code,
-    client_id: config.client_id,
-    redirect_uri: consoleCallbackUrl(),
-    code_verifier: pkce.verifier,
-  })
-  if (config.resource) body.set('resource', config.resource)
-  const tokens = await tokenRequest(config, body)
+  let session: ConsoleSession
+  try {
+    // 壳只做交换：不动 window、不落存储——宿主保留自己的 state 语义
+    session = toConsoleSession(await authFor(config).exchangeCode(code, pkce.verifier))
+  } catch (err) {
+    dropPkce()
+    asConsoleError(err)
+  }
   dropPkce()
-  const session = sessionFromTokens(tokens)
   saveSession(session)
-  return { returnTo: pkce.returnTo || '/console', session }
+  return { returnTo: pkce.returnTo || '/console' }
 }
 
-/** 过期前用 refresh token 静默续期；失败返回 null（前端显示重新登录）。 */
+/** 续期：凭据失效返回 null（宿主按「需重新登录」处理）。 */
 export async function refreshSession(
   config: ConsoleAuthConfig,
   session: ConsoleSession,
 ): Promise<ConsoleSession | null> {
   if (!session.refreshToken) return null
-  const body = new URLSearchParams({
-    grant_type: 'refresh_token',
-    refresh_token: session.refreshToken,
-    client_id: config.client_id,
-  })
-  if (config.resource) body.set('resource', config.resource)
   try {
-    const tokens = await tokenRequest(config, body)
-    const next = sessionFromTokens({
-      refresh_token: session.refreshToken,
-      ...tokens,
+    const next = await authFor(config).refresh({
+      idToken: session.idToken,
+      accessToken: session.accessToken,
+      refreshToken: session.refreshToken,
+      expiresAt: session.expiresAt,
+      identity: session.identity,
     })
-    saveSession(next)
-    return next
+    const converted = toConsoleSession(next)
+    saveSession(converted)
+    return converted
   } catch {
     return null
   }

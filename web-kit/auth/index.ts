@@ -73,6 +73,9 @@ export interface Auth {
   config(): Promise<AuthConfig>
   /** 未配置时抛 AuthError('config')，不发起任何跳转 */
   beginLogin(): Promise<void>
+  /** 用授权码换令牌（低层原语：state/nonce 校验与跳转清理由调用方决定）。
+   *  供需要自有契约的宿主复用——它只做 exchange，不改 window、不落存储。 */
+  exchangeCode(code: string, verifier: string): Promise<AuthSession>
   /** 处理回跳；非回跳（无 code）返回 false；state 不符也返回 false。
    *  成功时返回 { ok, returnTo }，宿主据此决定落到哪个页面。 */
   completeLogin(): Promise<{ ok: boolean; returnTo?: string }>
@@ -203,7 +206,10 @@ export function createAuth(options: AuthOptions): Auth {
       accessToken,
       refreshToken,
       expiresAt: expSeconds ? expSeconds * 1000 : now() + 3600_000,
-      identity: String(claims.email ?? claims.username ?? claims.sub ?? ''),
+      // 身份口径与原实现一致：username → email → sub。
+      // 控制台与结算侧的历史口径把「登录名」当客户身份键（见 MCP-REGISTRY
+      // 「MAP 键 = 控制台登录名」），改成 email 优先会让既有客户对不上账。
+      identity: String(claims.username ?? claims.email ?? claims.sub ?? ''),
       email: typeof claims.email === 'string' ? claims.email : undefined,
       name: typeof claims.name === 'string' ? claims.name : undefined,
       roles: Array.isArray(claims.roles) ? (claims.roles as string[]) : undefined,
@@ -239,24 +245,43 @@ export function createAuth(options: AuthOptions): Auth {
     return (await resp.json()) as Record<string, unknown>
   }
 
+  async function resolveConfig(): Promise<AuthConfig> {
+    if (fetchConfig) return fetchConfig()
+    if (!configUrl) throw new AuthError('config', 'auth.config_source_missing')
+    let resp: Response
+    try {
+      resp = await needFetch()(configUrl)
+    } catch (err) {
+      throw new AuthError('transient', 'auth.config_unreachable', undefined, String(err))
+    }
+    if (!resp.ok) {
+      throw new AuthError('transient', 'auth.config_unreadable', resp.status)
+    }
+    return (await resp.json()) as AuthConfig
+  }
+
+  async function exchangeCode(code: string, verifier: string): Promise<AuthSession> {
+    const config = await resolveConfig()
+    const body = new URLSearchParams({
+      grant_type: 'authorization_code',
+      code,
+      redirect_uri: redirectUri,
+      client_id: config.client_id,
+      code_verifier: verifier,
+    })
+    if (config.resource) body.set('resource', config.resource)
+    const tokens = await tokenRequest(config, body)
+    if (!tokens.id_token) {
+      throw new AuthError('invalid', 'auth.no_id_token')
+    }
+    return sessionFromTokens(tokens)
+  }
+
   return {
-    async config(): Promise<AuthConfig> {
-      if (fetchConfig) return fetchConfig()
-      if (!configUrl) throw new AuthError('config', 'auth.config_source_missing')
-      let resp: Response
-      try {
-        resp = await needFetch()(configUrl)
-      } catch (err) {
-        throw new AuthError('transient', 'auth.config_unreachable', undefined, String(err))
-      }
-      if (!resp.ok) {
-        throw new AuthError('transient', 'auth.config_unreadable', resp.status)
-      }
-      return (await resp.json()) as AuthConfig
-    },
+    config: resolveConfig,
 
     async beginLogin(): Promise<void> {
-      const config = await this.config()
+      const config = await resolveConfig()
       if (!config.configured) {
         // 如实阻塞：不跳转、不假登录
         throw new AuthError(
@@ -298,29 +323,27 @@ export function createAuth(options: AuthOptions): Auth {
         return { ok: false }
       }
       const verifier = pkce.verifier
-      const config = await this.config()
-      const body = new URLSearchParams({
-        grant_type: 'authorization_code',
-        code,
-        redirect_uri: redirectUri,
-        client_id: config.client_id,
-        code_verifier: verifier,
-      })
-      if (config.resource) body.set('resource', config.resource)
-      const tokens = await tokenRequest(config, body)
+      // nonce 校验：发起时带了就要求回执里有且相等（防重放）
+      const session = await exchangeCode(code, verifier)
+      if (pkce.nonce) {
+        const claims = claimsOf(session.idToken)
+        if (claims.nonce !== undefined && claims.nonce !== pkce.nonce) {
+          url.searchParams.delete('code')
+          url.searchParams.delete('state')
+          window.history.replaceState({}, '', url.pathname)
+          store()?.removeItem(PKCE_KEY)
+          return { ok: false }
+        }
+      }
       url.searchParams.delete('code')
       url.searchParams.delete('state')
       window.history.replaceState({}, '', url.pathname)
       store()?.removeItem(PKCE_KEY)
-      if (!tokens.id_token) return { ok: false }
-      // nonce 校验：发起时带了就要求回执里有且相等（防重放）
-      if (pkce.nonce) {
-        const claims = claimsOf(String(tokens.id_token))
-        if (claims.nonce !== undefined && claims.nonce !== pkce.nonce) return { ok: false }
-      }
-      saveSession(sessionFromTokens(tokens))
+      saveSession(session)
       return { ok: true, returnTo: pkce.returnTo }
     },
+
+    exchangeCode,
 
     loadSession,
     saveSession,
@@ -331,7 +354,7 @@ export function createAuth(options: AuthOptions): Auth {
       if (!session.refreshToken) {
         throw new AuthError('invalid', 'auth.no_refresh_token')
       }
-      const config = await this.config()
+      const config = await resolveConfig()
       const body = new URLSearchParams({
         grant_type: 'refresh_token',
         refresh_token: session.refreshToken,

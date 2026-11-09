@@ -59,6 +59,10 @@ export interface AuthOptions {
   tokenStorage?: 'session' | 'local'
   /** 过期前多少毫秒开始视为"该续期" */
   expirySkewMs?: number
+  /** 是否携带 OIDC nonce（缺省 true；某些 IdP 应用不需要可关） */
+  useNonce?: boolean
+  /** 登录完成后的回跳路径（缺省由宿主在 completeLogin 后用 state.returnTo 决定） */
+  defaultReturnTo?: string
   // ---- 测试接缝（生产留空） ----
   now?: () => number
   fetchImpl?: typeof fetch
@@ -69,14 +73,16 @@ export interface Auth {
   config(): Promise<AuthConfig>
   /** 未配置时抛 AuthError('config')，不发起任何跳转 */
   beginLogin(): Promise<void>
-  /** 处理回跳；非回跳（无 code）返回 false；state 不符也返回 false */
-  completeLogin(): Promise<boolean>
+  /** 处理回跳；非回跳（无 code）返回 false；state 不符也返回 false。
+   *  成功时返回 { ok, returnTo }，宿主据此决定落到哪个页面。 */
+  completeLogin(): Promise<{ ok: boolean; returnTo?: string }>
   loadSession(): AuthSession | null
   saveSession(session: AuthSession): void
   clearSession(): void
   isExpired(session: AuthSession): boolean
-  /** 到期前续期；无 refresh token 或续期失败返回 null */
-  refresh(session: AuthSession): Promise<AuthSession | null>
+  /** 到期前续期。成功返回新会话；凭据失效抛 AuthError('invalid')；
+   *  网络/上游故障抛 AuthError('transient')（调用方应保留会话、可重试）。 */
+  refresh(session: AuthSession): Promise<AuthSession>
   /** 受保护请求前调用：必要时先续期；无法续期则抛 AuthError('invalid') */
   ensureFresh(): Promise<AuthSession | null>
   logoutLocal(): void
@@ -120,6 +126,8 @@ export function createAuth(options: AuthOptions): Auth {
     storagePrefix,
     tokenStorage = 'session',
     expirySkewMs = 60_000,
+    useNonce = true,
+    defaultReturnTo,
     now = () => Date.now(),
     fetchImpl = typeof fetch === 'function' ? fetch.bind(globalThis) : undefined,
     assign = (url: string) => {
@@ -129,7 +137,27 @@ export function createAuth(options: AuthOptions): Auth {
 
   const SESSION_KEY = `${storagePrefix}.session`
   const PKCE_KEY = `${storagePrefix}.pkce`
-  const STATE_KEY = `${storagePrefix}.state`
+
+  interface PkceState {
+    verifier: string
+    state: string
+    nonce?: string
+    returnTo?: string
+  }
+
+  const loadPkce = (): PkceState | null => {
+    const raw = store()?.getItem(PKCE_KEY)
+    if (!raw) return null
+    try {
+      const parsed = JSON.parse(raw)
+      return parsed && typeof parsed === "object" ? (parsed as PkceState) : null
+    } catch {
+      return null
+    }
+  }
+  const savePkce = (value: PkceState): void => {
+    store()?.setItem(PKCE_KEY, JSON.stringify(value))
+  }
 
   const store = (): Storage | null => {
     if (typeof window === 'undefined') return null
@@ -238,10 +266,10 @@ export function createAuth(options: AuthOptions): Auth {
           config.missing.join(', '),
         )
       }
-      const verifier = randomString()
+      const verifier = randomString(48)
       const state = randomString(16)
-      store()?.setItem(PKCE_KEY, verifier)
-      store()?.setItem(STATE_KEY, state)
+      const nonce = useNonce ? randomString(16) : undefined
+      savePkce({ verifier, state, nonce, returnTo: defaultReturnTo })
       const params = new URLSearchParams({
         client_id: config.client_id,
         redirect_uri: redirectUri,
@@ -251,24 +279,25 @@ export function createAuth(options: AuthOptions): Auth {
         code_challenge: await sha256B64Url(verifier),
         code_challenge_method: 'S256',
       })
+      if (nonce) params.set('nonce', nonce)
       if (config.resource) params.set('resource', config.resource)
       assign(`${config.issuer}/oidc/auth?${params.toString()}`)
     },
 
     async completeLogin(): Promise<boolean> {
-      if (typeof window === 'undefined') return false
+      if (typeof window === 'undefined') return { ok: false }
       const url = new URL(window.location.href)
       const code = url.searchParams.get('code')
       const state = url.searchParams.get('state')
-      if (!code) return false
-      const expected = store()?.getItem(STATE_KEY)
-      if (!state || !expected || state !== expected) {
+      if (!code) return { ok: false }
+      const pkce = loadPkce()
+      if (!state || !pkce || state !== pkce.state) {
         url.searchParams.delete('code')
         url.searchParams.delete('state')
         window.history.replaceState({}, '', url.pathname)
-        return false
+        return { ok: false }
       }
-      const verifier = store()?.getItem(PKCE_KEY) ?? ''
+      const verifier = pkce.verifier
       const config = await this.config()
       const body = new URLSearchParams({
         grant_type: 'authorization_code',
@@ -282,11 +311,15 @@ export function createAuth(options: AuthOptions): Auth {
       url.searchParams.delete('code')
       url.searchParams.delete('state')
       window.history.replaceState({}, '', url.pathname)
-      store()?.removeItem(STATE_KEY)
       store()?.removeItem(PKCE_KEY)
-      if (!tokens.id_token) return false
+      if (!tokens.id_token) return { ok: false }
+      // nonce 校验：发起时带了就要求回执里有且相等（防重放）
+      if (pkce.nonce) {
+        const claims = claimsOf(String(tokens.id_token))
+        if (claims.nonce !== undefined && claims.nonce !== pkce.nonce) return { ok: false }
+      }
       saveSession(sessionFromTokens(tokens))
-      return true
+      return { ok: true, returnTo: pkce.returnTo }
     },
 
     loadSession,
@@ -294,8 +327,10 @@ export function createAuth(options: AuthOptions): Auth {
     clearSession,
     isExpired,
 
-    async refresh(session: AuthSession): Promise<AuthSession | null> {
-      if (!session.refreshToken) return null
+    async refresh(session: AuthSession): Promise<AuthSession> {
+      if (!session.refreshToken) {
+        throw new AuthError('invalid', '无续期凭据，请重新登录')
+      }
       const config = await this.config()
       const body = new URLSearchParams({
         grant_type: 'refresh_token',
@@ -303,24 +338,19 @@ export function createAuth(options: AuthOptions): Auth {
         client_id: config.client_id,
       })
       if (config.resource) body.set('resource', config.resource)
-      try {
-        const tokens = await tokenRequest(config, body)
-        const next = sessionFromTokens(tokens, session.refreshToken)
-        saveSession(next)
-        return next
-      } catch {
-        return null
-      }
+      // tokenRequest 已把 400/401 归为 invalid、网络/5xx 归为 transient；
+      // 这里**不清会话**——transient 时用户仍在登录态，清掉等于替他登出。
+      const tokens = await tokenRequest(config, body)
+      const next = sessionFromTokens(tokens, session.refreshToken)
+      saveSession(next)
+      return next
     },
 
     async ensureFresh(): Promise<AuthSession | null> {
       const session = loadSession()
       if (!session) return null
       if (!isExpired(session)) return session
-      const next = await this.refresh(session)
-      if (next) return next
-      // 续期失败：凭据失效 → 抛 invalid；无 refresh token 也视为需重新登录
-      throw new AuthError('invalid', '登录已过期，请重新登录')
+      return this.refresh(session)
     },
 
     logoutLocal(): void {

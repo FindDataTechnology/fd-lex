@@ -124,13 +124,13 @@ export async function fetchAuthConfig(): Promise<ConsoleAuthConfig> {
     response = await fetch(apiUrl('/console/auth/config'))
   } catch (err) {
     throw new ConsoleAuthError(
-      '无法读取登录配置',
+      'console.config_unreadable',
       undefined,
       err instanceof Error ? err.message : String(err),
     )
   }
   if (!response.ok) {
-    throw new ConsoleAuthError('无法读取登录配置', response.status)
+    throw new ConsoleAuthError('console.config_unreadable', response.status)
   }
   return (await response.json()) as ConsoleAuthConfig
 }

@@ -33,6 +33,87 @@ HOSTS = {
     "fd-zhesi": ROOT / "fd-zhesi" / "web" / "src",
 }
 
+
+#: 登记豁免：(宿主, 文件路径后缀, 片段包含) → 理由。
+#: 登记项每次运行都会**打印出来**——不是藏起来，是让它保持可见；新增须写理由。
+ALLOWLIST: tuple[tuple[str, str, str, str], ...] = (
+    (
+        "fd-lex",
+        "components/SealMark.tsx",
+        'aria-label="良律"',
+        "品牌名（良律）作为无障碍标签：是专名不是文案，不需要翻译",
+    ),
+    (
+        "fd-lex",
+        "console/WanxingCopilot.tsx",
+        "'控制台操作伴随'",
+        "待迁：该文件由另一会话在改（11-09 至今有未提交改动），避免并发冲突，迁 i18n 另立",
+    ),
+    (
+        "fd-lex",
+        "console/WanxingCopilot.tsx",
+        "'识律'",
+        "待迁：同上（品牌名兼角色名，需与文案表一起定口径）",
+    ),
+    (
+        "fd-lex",
+        "console/WanxingCopilot.tsx",
+        "'刷新中'",
+        "待迁：同上",
+    ),
+    (
+        "fd-zhesi",
+        "pages/Landing.tsx",
+        '"个体"',
+        "六轴词表是领域词元（enum-like 数据），随文案表翻译反而会破坏与后端的对齐",
+    ),
+    (
+        "fd-zhesi",
+        "pages/Landing.tsx",
+        '"决定"',
+        "六轴词表词元（同上）",
+    ),
+    (
+        "fd-zhesi",
+        "pages/Landing.tsx",
+        '"普遍"',
+        "六轴词表词元（同上）",
+    ),
+    (
+        "fd-zhesi",
+        "pages/Landing.tsx",
+        '"物质"',
+        "六轴词表词元（同上）",
+    ),
+    (
+        "fd-zhesi",
+        "pages/Landing.tsx",
+        '"理性"',
+        "六轴词表词元（同上）",
+    ),
+    (
+        "fd-zhesi",
+        "pages/Landing.tsx",
+        '"超越"',
+        "六轴词表词元（同上）",
+    ),
+    (
+        "fd-zhesi",
+        "pages/Landing.tsx",
+        'aria-label="六轴哲学坐标"',
+        "待迁：随六轴词表一起定口径（同一屏，同一决策）",
+    ),
+)
+
+
+def allowed(host: str, rel_path: str, line: str) -> str | None:
+    """命中豁免则返回理由。"""
+    for a_host, suffix, needle, reason in ALLOWLIST:
+        if a_host == host and rel_path.replace("\\", "/").endswith(suffix) and needle in line:
+            return reason
+    return None
+
+
 CJK = re.compile(r"[\u4e00-\u9fff]")
 #: 不是文案的属性（含用户可见文案的反而要抓）
 NON_COPY_ATTRS = {
@@ -99,6 +180,9 @@ def scan_file(path: Path) -> list[tuple[int, str, str]]:
     return sorted(set(found))
 
 
+exemptions: list[str] = []
+
+
 def check(host: str, src: Path) -> list[str]:
     problems: list[str] = []
     if not src.is_dir():
@@ -117,8 +201,14 @@ def check(host: str, src: Path) -> list[str]:
             continue  # 测试夹具/演示数据，不是界面文案
         if "-primitives" in str(path) or path.name == "site.ts":
             continue
+        rel = str(path.relative_to(ROOT))
         for line, kind, snippet in scan_file(path):
-            problems.append(f"{host}: {path.relative_to(ROOT)}:{line} [{kind}] {snippet}")
+            entry = f"{host}: {rel}:{line} [{kind}] {snippet}"
+            reason = allowed(host, rel, snippet)
+            if reason:
+                exemptions.append(f"{entry}  ← 豁免：{reason}")
+            else:
+                problems.append(entry)
     return problems
 
 
@@ -139,6 +229,11 @@ def main() -> int:
             print(f"  {line}")
         if len(found) > args.limit:
             print(f"  … 另有 {len(found) - args.limit} 处")
+
+    if exemptions:
+        print(f"\n=== 登记豁免 {len(exemptions)} 处（保持可见，不是静默忽略）===")
+        for e in exemptions:
+            print(f"  {e}")
 
     if args.allow_empty:
         return 0

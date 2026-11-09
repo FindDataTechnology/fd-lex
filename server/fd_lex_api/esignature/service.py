@@ -81,6 +81,7 @@ def create_task(
     db: Session, *, customer_identity: str, customer_principal: str | None,
     title: str, category: str, file_name: str, file_bytes: bytes,
     signers: list[dict[str, Any]],
+    matter_id: str | None = None, anchor_artifact_id: str | None = None,
 ) -> EsignTask:
     if not title.strip():
         raise EsignError(400, "title 不能为空")
@@ -98,6 +99,28 @@ def create_task(
     sha, size = store.store_document(file_bytes, file_name)
     if db.get(EsignDocument, sha) is None:
         db.add(EsignDocument(sha256=sha, file_name=file_name, size=size))
+
+    # 案卷锚定（spec lex-matter「签署锚定与案卷内容一致」）：
+    # 给了 anchor_artifact_id 就回读该产物并比哈希，不一致拒绝创建并给出两侧取值。
+    if anchor_artifact_id:
+        from ..matter.models import Matter, MatterArtifact
+
+        artifact = db.get(MatterArtifact, anchor_artifact_id)
+        if artifact is None:
+            raise EsignError(404, f"案卷产物不存在：{anchor_artifact_id}")
+        matter = db.get(Matter, artifact.matter_id)
+        if matter is None or matter.customer_identity != customer_identity:
+            # 不属于本租户与不存在同一语义，不泄露存在性
+            raise EsignError(404, f"案卷产物不存在：{anchor_artifact_id}")
+        if matter_id and matter_id != artifact.matter_id:
+            raise EsignError(409, f"matter_id 与产物所属案件不一致：{matter_id} vs {artifact.matter_id}")
+        matter_id = artifact.matter_id
+        if artifact.sha256 != sha:
+            raise EsignError(
+                409,
+                f"锚定哈希不一致：产物 {artifact.sha256} / 本次文件 {sha}",
+            )
+
     task = EsignTask(
         id=new_id(),
         customer_identity=customer_identity,
@@ -106,6 +129,8 @@ def create_task(
         category=category,
         status=TASK_DRAFT,
         anchor_sha256=sha,
+        matter_id=matter_id,
+        anchor_artifact_id=anchor_artifact_id,
         file_name=file_name,
         file_size=size,
     )

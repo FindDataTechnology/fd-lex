@@ -44,6 +44,9 @@ class TaskCreateIn(BaseModel):
     file_name: str
     file_b64: str
     signers: list[SignerIn] = Field(min_length=1)
+    #: 案卷归属（可空）；给了 anchor_artifact_id 时服务端回读产物并校验哈希一致
+    matter_id: str | None = None
+    anchor_artifact_id: str | None = None
 
 
 class FileReplaceIn(BaseModel):
@@ -100,6 +103,8 @@ def create_task(body: TaskCreateIn, user: ConsoleUser = Depends(require_console_
             file_name=body.file_name,
             file_bytes=data,
             signers=[s.model_dump() for s in body.signers],
+            matter_id=body.matter_id,
+            anchor_artifact_id=body.anchor_artifact_id,
         )
     except service.EsignError as exc:
         raise HTTPException(exc.status_code, exc.detail) from exc

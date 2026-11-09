@@ -26,6 +26,7 @@ from fd_lex_api.distribution.routes import router as distribution_router
 from fd_lex_api.esignature import console_router as esignature_console_router
 from fd_lex_api.esignature import signer_router as esignature_signer_router
 from fd_lex_api.metering.routes import router as metering_router
+from fd_lex_api.matter.routes import router as matter_router
 
 
 def _init_tables() -> None:
@@ -38,12 +39,14 @@ def _init_tables() -> None:
     from fd_lex_api.billing import init_billing
     from fd_lex_api.console_api.models import ensure_console_schema
     from fd_lex_api.esignature.models import ensure_esign_schema
+    from fd_lex_api.matter.models import ensure_matter_schema
     from fd_lex_api.metering.db import ensure_schema
 
     ensure_schema()
     init_billing()
     ensure_console_schema()
     ensure_esign_schema()
+    ensure_matter_schema()
 
 
 @asynccontextmanager
@@ -92,6 +95,8 @@ app.include_router(distribution_router)
 # 电子签（lex-contract-esignature）：控制台面发起/出证/验证；签署人 H5 面落签
 app.include_router(esignature_console_router)
 app.include_router(esignature_signer_router)
+# 案件脊柱（lex-matter-spine）：/api/console/matter 案件的产物登记与证据链
+app.include_router(matter_router)
 
 
 def _build_version() -> str:

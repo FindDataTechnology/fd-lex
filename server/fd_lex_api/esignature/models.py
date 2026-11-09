@@ -78,6 +78,10 @@ class EsignTask(EsignBase):
     status: Mapped[str] = mapped_column(String(24), nullable=False, default=TASK_DRAFT)
     #: 锚定文件（sha256 → lex_esign_documents）
     anchor_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    #: 案卷归属（change lex-matter-spine）：可空，未接入案卷的既有路径行为不变
+    matter_id: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
+    #: 锚定的案卷产物（若给出，anchor_sha256 必须等于该产物 sha256）
+    anchor_artifact_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
     file_name: Mapped[str] = mapped_column(String(500), nullable=False)
     file_size: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     #: 签署腿（adapter 名与厂商侧任务引用；出证双轨保留用）
@@ -101,6 +105,8 @@ class EsignTask(EsignBase):
             "category": self.category,
             "status": self.status,
             "anchor_sha256": self.anchor_sha256,
+            "matter_id": self.matter_id,
+            "anchor_artifact_id": self.anchor_artifact_id,
             "file_name": self.file_name,
             "file_size": self.file_size,
             "adapter_name": self.adapter_name,

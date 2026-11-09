@@ -76,3 +76,19 @@ sub2api 幂等结算 + 两档预警 80%/95%）；规格见
 分发面测试用 tmp 合成 pack 目录 + 仓内 packer 真实产物的跨模块契约用例
 （引用包 full、结构增量、**flk 日增量 incremental** 三种形态：下载完整性 / Range /
 sha256 verify=1 / 鉴权 fail-closed）。
+
+## 案件脊柱（change lex-matter-spine）
+
+`fd_lex_api/matter/` 持有案件、案卷产物与证据链：`lex_matters` / `lex_matter_artifacts` /
+`lex_matter_refs`（迁移 `0003_lex_matter`）。控制台面端点为 `/api/console/matter`，
+包括产物登记与证据链查询（`/graph`，断链显式标记）。
+
+产物契约的规范真源是同仓 `../contracts/lex-artifact.schema.json`；执行实现是
+`fd_lex_api/matter/contract.py`（缺字段即拒收，语义与 `fd-legal-search-mcp` 的
+`provenance.ensure_provenance` 同构）。签署任务可锚定案卷产物：给了
+`anchor_artifact_id` 时服务端回读产物并校验 `anchor_sha256 == artifact.sha256`，
+不一致拒绝创建并给出两侧哈希。
+
+上产前置：迁移 `0003_lex_matter` 为纯增量（新表 + 可空列），须先在**真实客户库副本**
+上完整跑通（含既有数据、逐表行数比对）后才允许对生产库执行。
+

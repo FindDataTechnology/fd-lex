@@ -45,6 +45,7 @@ class MeteringRecord(MeteringBase):
         Index("ix_metering_records_track_time", "credential_track", "event_timestamp"),
         Index("ix_metering_records_caller_time", "caller", "event_timestamp"),
         Index("ix_metering_records_unit_time", "unit", "event_timestamp"),
+        Index("ix_metering_records_matter_time", "matter_id", "event_timestamp"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -70,6 +71,8 @@ class MeteringRecord(MeteringBase):
     unit: Mapped[str] = mapped_column(String(16), nullable=False)
     #: 来源标记：customer|platform-internal（provenance 预留）
     source: Mapped[str] = mapped_column(String(32), nullable=False)
+    #: 案件维度（change lex-matter-spine）：可空；未携带时既有记账口径不变
+    matter_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
     #: 平台侧入库时间
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()

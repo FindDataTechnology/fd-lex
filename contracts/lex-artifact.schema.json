@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://finddatatech.cloud/contracts/lex-artifact.schema.json",
+  "title": "识律案卷产物契约（Artifact Contract v1）",
+  "description": "一张案卷产物必须能回答三个问题：谁产的（producer）、依据什么（refs）、数据口径是哪天（provenance.as_of）。三仓（fd-lex / fd-legal-search-mcp / law-bench）共用本定义。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "producer", "refs", "sha256", "payload"],
+  "properties": {
+    "kind": {
+      "type": "string",
+      "enum": [
+        "statute_hit",
+        "case_hit",
+        "doc_draft",
+        "elementized",
+        "contract_draft",
+        "review_report",
+        "esign_task"
+      ],
+      "description": "产物类别。检索类（statute_hit / case_hit）必须携带 provenance。"
+    },
+    "producer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["line", "server", "tool", "version"],
+      "properties": {
+        "line": { "type": "string", "minLength": 1, "description": "产品线 slug，识律为 lex" },
+        "server": { "type": "string", "minLength": 1, "description": "产生该产物的 MCP/服务名" },
+        "tool": { "type": "string", "minLength": 1, "description": "产生该产物的工具或端点名" },
+        "version": { "type": "string", "minLength": 1, "description": "该服务版本或镜像 tag" }
+      }
+    },
+    "refs": {
+      "type": "array",
+      "description": "所引用产物的标识集合。无依据时为空数组，字段本身必须存在（不得以 null 或缺失表达「没有依据」）。",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "内容指纹：文件取字节哈希；文本取规范化（UTF-8、LF 换行）字节哈希。"
+    },
+    "payload": {
+      "type": "object",
+      "description": "该产物自身的可复核结构化内容；形状由 kind 决定。"
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "stable_id", "as_of"],
+      "description": "检索类产物必填；与 fd-legal-search-mcp 的 provenance 三件套同一契约。",
+      "properties": {
+        "source": { "type": "string", "minLength": 1, "description": "如 law_db.law_chunks_v2" },
+        "stable_id": { "type": "string", "minLength": 1, "description": "来源库内稳定标识" },
+        "as_of": { "type": "string", "minLength": 1, "description": "ISO-8601 数据口径日期" }
+      }
+    },
+    "title": { "type": "string", "description": "给人看的短标题，可缺。" }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "kind": { "enum": ["statute_hit", "case_hit"] } },
+        "required": ["kind"]
+      },
+      "then": { "required": ["provenance"] }
+    }
+  ]
+}

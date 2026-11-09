@@ -42,6 +42,18 @@ describe('Layout 在无路由上下文下', () => {
     expect(noop.closest('button')).toBeNull()
   })
 
+  it('宿主不提供 nav 时不渲染 nav 容器（不抛错、不留空壳）', () => {
+    const { container } = render(<Layout brand={<span>b</span>}>{null}</Layout>)
+    expect(container.querySelector('.shell__nav')).toBeNull()
+    expect(container.querySelector('.shell__header')).toBeTruthy()
+  })
+
+  it('宿主不提供 footer/actions 时相应区域不渲染', () => {
+    const { container } = render(<Layout brand={<span>b</span>}>{null}</Layout>)
+    expect(container.querySelector('.shell__footer')).toBeNull()
+    expect(container.querySelector('.shell__actions')).toBeNull()
+  })
+
   it('注入 renderLink 时完全交给宿主（壳不猜路由）', () => {
     render(
       <Layout

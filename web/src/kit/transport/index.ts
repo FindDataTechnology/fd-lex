@@ -71,7 +71,7 @@ export function createTransport(options: TransportOptions): Transport {
         signal: init.signal ?? controller.signal,
       })
     } catch (err) {
-      throw new TransportError('请求失败', undefined, String(err))
+      throw new TransportError('请求失败', undefined, redact(String(err)) as string)
     } finally {
       clearTimeout(timer)
     }
@@ -87,11 +87,11 @@ export function createTransport(options: TransportOptions): Transport {
       }
     }
     if (resp.status === 401) {
-      throw new TransportError('未认证', 401, await resp.text().catch(() => ''))
+      throw new TransportError('未认证', 401, redact(await resp.text().catch(() => '')) as string)
     }
     if (!resp.ok) {
       const detail = await resp.text().catch(() => '')
-      throw new TransportError(`请求失败：${resp.status}`, resp.status, detail.slice(0, 500))
+      throw new TransportError(`请求失败：${resp.status}`, resp.status, (redact(detail) as string).slice(0, 500))
     }
     if (resp.status === 204) return undefined as T
     const text = await resp.text()

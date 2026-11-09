@@ -25,7 +25,7 @@ spec:
     spec:
       containers:
         - name: web
-          image: ccr.ccs.tencentyun.com/finddata-business/fd-lex-web:sha-4ae80ec # 控制台副驾改用万星 loader（124 行宿主协议 + 硬编码 WIDGET_SLUG 下线，副驾由「线副驾」绑定解析）；源 fd-lex 1602ed4；快照仓 scs001/fd-lex-priv-images 4ae80ec（run 42653938440 镜像已推 digest 65832516，但 GHA 缓存导出失败使内容闸门未跑——sha-4ae80ec 由 imagetools 等价操作手工铸自该 digest）；上一版 sha-c4b0953 见 git 历史
+          image: ccr.ccs.tencentyun.com/finddata-business/fd-lex-web:sha-c7501b8 # 共享前端壳：i18next 移除 + auth 换壳 + kit 落地（change lex-web-shell-convergence）；源 e05a304；快照仓 scs001/fd-lex-priv-images c7501b8；上一版 sha-4ae80ec。2026-11-10 上产：75 测试 + tsc + build 绿，预览三入口无裸键；回滚=改回上一 tag。原注：控制台副驾改用万星 loader（124 行宿主协议 + 硬编码 WIDGET_SLUG 下线，副驾由「线副驾」绑定解析）；源 fd-lex 1602ed4；快照仓 scs001/fd-lex-priv-images 4ae80ec（run 42653938440 镜像已推 digest 65832516，但 GHA 缓存导出失败使内容闸门未跑——sha-4ae80ec 由 imagetools 等价操作手工铸自该 digest）；上一版 sha-c4b0953 见 git 历史
           imagePullPolicy: IfNotPresent
           ports:
             - name: http

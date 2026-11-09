@@ -1,6 +1,6 @@
 // 后台套餐配置：档位/月费/按单位含额与超额单价（upsert 即时生效，调价不发版）。
 import { useCallback, useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '../i18n-react'
 
 import { AdminPageHeader, AdminState } from './AdminLayout'
 import {

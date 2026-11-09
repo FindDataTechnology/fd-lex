@@ -1,4 +1,4 @@
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '../i18n-react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import type { ReactNode } from 'react'
 

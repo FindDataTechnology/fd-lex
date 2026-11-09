@@ -1,6 +1,6 @@
 // 后台客户管理：列表 / 开户（sub2api 代建）/ 改档位与状态 / 身份绑定（Logto ↔ 客户）。
 import { useCallback, useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '../i18n-react'
 
 import { AdminPageHeader, AdminState } from './AdminLayout'
 import {

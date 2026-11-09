@@ -1,15 +1,16 @@
-import i18n from 'i18next'
-import { initReactI18next } from 'react-i18next'
+import { createI18n } from './kit/i18n/index'
+import en from './locales/en'
+import zh from './locales/zh'
 
-import en from './locales/en/translation.json'
-import zh from './locales/zh/translation.json'
-
-// i18next 双语骨架：zh/en 各一个 namespace（translation）。
-// 语言探测顺序：localStorage -> 默认中文。切换时同步 <html lang>。
+// 双语骨架（change lex-web-shell-convergence 3.3）：从 i18next 迁到共享壳。
+// 对外 API 保持不变（SUPPORTED_LANGUAGES / LANGUAGE_STORAGE_KEY / persistLanguage），
+// 语言探测顺序仍是 localStorage -> 默认中文，切换时同步 <html lang>。
 export const SUPPORTED_LANGUAGES = ['zh', 'en'] as const
 export const LANGUAGE_STORAGE_KEY = 'lex.lang'
 
-function initialLanguage(): (typeof SUPPORTED_LANGUAGES)[number] {
+type Lang = (typeof SUPPORTED_LANGUAGES)[number]
+
+function initialLanguage(): Lang {
   try {
     const stored = localStorage.getItem(LANGUAGE_STORAGE_KEY)
     if (stored === 'zh' || stored === 'en') return stored
@@ -23,19 +24,10 @@ function syncDocumentLanguage(lng: string) {
   document.documentElement.lang = lng === 'zh' ? 'zh-CN' : 'en'
 }
 
-void i18n.use(initReactI18next).init({
-  resources: {
-    zh: { translation: zh },
-    en: { translation: en },
-  },
-  lng: initialLanguage(),
-  fallbackLng: 'zh',
-  supportedLngs: [...SUPPORTED_LANGUAGES],
-  interpolation: { escapeValue: false },
-})
+export const i18n = createI18n({ zh, en, initial: initialLanguage() })
 
-i18n.on('languageChanged', syncDocumentLanguage)
-syncDocumentLanguage(i18n.language)
+i18n.subscribe(() => syncDocumentLanguage(i18n.locale()))
+syncDocumentLanguage(i18n.locale())
 
 export function persistLanguage(lng: string) {
   try {

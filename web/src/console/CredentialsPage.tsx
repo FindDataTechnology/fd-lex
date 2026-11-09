@@ -1,7 +1,7 @@
 // 控制台凭据管理：铸造 / 列表 / 吊销（经 lex API 代理 registry patch-keys）。
 // 明文仅铸造响应中出现一次；吊销即时生效（registry 侧下一次调用 401）。
 import { useCallback, useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '../i18n-react'
 
 import { ConsolePageHeader, ConsoleState } from './ConsoleLayout'
 import {

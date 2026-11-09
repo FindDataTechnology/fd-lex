@@ -1,6 +1,6 @@
 // 控制台用量：按周期查看本客户（含绑定身份）的调用与双单位数量。
 import { useCallback, useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '../i18n-react'
 
 import { ConsolePageHeader, ConsoleState, PeriodPicker } from './ConsoleLayout'
 import { ConsoleApiError, currentPeriod, fetchUsage, type UsageResponse } from './api'

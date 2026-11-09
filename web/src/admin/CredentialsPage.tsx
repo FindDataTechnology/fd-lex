@@ -1,7 +1,7 @@
 // 后台凭据留痕：经 lex 控制台代理发生的铸造/吊销事件（明文与哈希均不落库）。
 // 实时权威列表在 registry /api/patch-keys（以持钥人身份查询）；本页如实标注边界。
 import { useCallback, useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '../i18n-react'
 
 import { AdminPageHeader, AdminState } from './AdminLayout'
 import {

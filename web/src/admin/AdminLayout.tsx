@@ -1,6 +1,6 @@
 // 运营后台布局：左侧栏（客户/套餐/账本/用量/凭据）+ 顶栏（鉴权方式与令牌）。
 import type { ReactNode } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '../i18n-react'
 import { NavLink } from 'react-router-dom'
 
 export type AdminSection = 'customers' | 'plans' | 'ledger' | 'usage' | 'credentials'

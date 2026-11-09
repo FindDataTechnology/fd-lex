@@ -1,6 +1,6 @@
 // 控制台账单：本客户周期账本流水（lex 账本为权威口径）。
 import { useCallback, useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '../i18n-react'
 
 import { ConsolePageHeader, ConsoleState, PeriodPicker } from './ConsoleLayout'
 import { ConsoleApiError, currentPeriod, fetchBilling, type BillingResponse } from './api'

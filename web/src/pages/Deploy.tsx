@@ -1,6 +1,6 @@
 // /deploy 私有化交付独立路由页（lex-platform-v1 3.3 的 /deploy 入口）。
 // 内容与首页文档区同源（docs.sections.*），并展开交付通道与验收口径；中英双语。
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '../i18n-react'
 import { Link } from 'react-router-dom'
 
 import Layout from '../components/Layout'

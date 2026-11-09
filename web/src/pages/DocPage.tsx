@@ -1,6 +1,6 @@
 // /docs/:slug 文档页：按当前 i18n 语言选 zh/en 目录渲染对应 Markdown。
 // slug 未命中时给友好的「未找到」态，并保留返回文档索引的出口。
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '../i18n-react'
 import { Link, useParams } from 'react-router-dom'
 
 import Markdown from '../components/Markdown'

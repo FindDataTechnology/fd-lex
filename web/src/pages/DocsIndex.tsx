@@ -1,6 +1,6 @@
 // /docs 文档索引：列出当前语言目录下的全部文档（标题/副文取自 frontmatter）。
 // 语言切换时列表内容跟随切换（沿用 i18next 语言机制）。
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '../i18n-react'
 import { Link } from 'react-router-dom'
 
 import Layout from '../components/Layout'

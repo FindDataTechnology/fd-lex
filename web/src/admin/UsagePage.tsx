@@ -1,6 +1,6 @@
 // 后台用量视图：metering_records 按（轨道×调用者×单位）聚合（周期过滤）。
 import { useCallback, useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '../i18n-react'
 
 import { AdminPageHeader, AdminState } from './AdminLayout'
 import {

@@ -5,7 +5,7 @@
 // - 未登录 → Logto 登录/注册按钮（注册在 Logto 托管页完成）；
 // - 已登录但非 lex 客户组织（403）→ 原样显示 detail 与退出入口。
 import { useCallback, useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '../i18n-react'
 import { Route, Routes, useNavigate } from 'react-router-dom'
 
 import Layout from '../components/Layout'

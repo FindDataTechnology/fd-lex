@@ -1,7 +1,7 @@
 // 控制台布局：左侧栏（总览/凭据/用量/账单/额度）+ 顶栏（登录身份 + 退出）。
 // 设计语言沿用识律法典蓝/纸色/台账行式；标题用宋体 display 字体。
 import type { ReactNode } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '../i18n-react'
 import { Link, NavLink } from 'react-router-dom'
 import { WanxingCopilot } from './WanxingCopilot'
 

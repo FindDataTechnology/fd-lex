@@ -1,6 +1,6 @@
 // 控制台总览：客户档案 + 本期用量摘要 + 额度状态（登录后首屏）。
 import { useCallback, useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '../i18n-react'
 import { Link } from 'react-router-dom'
 
 import { ConsolePageHeader, ConsoleState } from './ConsoleLayout'

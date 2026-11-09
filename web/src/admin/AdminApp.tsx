@@ -4,7 +4,7 @@
 // - 控制台登录态若带管理员角色（ADMIN_ROLES），直接进入，无需令牌；
 // - 否则显示内部令牌输入（X-Admin-Token），未配置服务端令牌时后端 fail-closed。
 import { useCallback, useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '../i18n-react'
 import { Link, Route, Routes, useNavigate } from 'react-router-dom'
 
 import Layout from '../components/Layout'

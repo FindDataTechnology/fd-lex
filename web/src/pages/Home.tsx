@@ -1,6 +1,5 @@
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '../i18n-react'
 import { Link } from 'react-router-dom'
-import type { TFunction } from 'i18next'
 
 import HostBadge, { type CapabilityHost, PreviewBadge } from '../components/HostBadge'
 import Layout from '../components/Layout'
@@ -11,8 +10,8 @@ const STAT_KEYS = ['wenshu', 'catalog', 'tools'] as const
 const PRICING_DIMENSIONS = ['units', 'quota', 'overage', 'updates', 'deploy'] as const
 const DOC_SECTIONS = ['deploy', 'airgap', 'upgrade', 'updates', 'offline', 'tiers'] as const
 
-function tArray(t: TFunction, key: string): string[] {
-  const value = t(key, { returnObjects: true })
+function tArray(raw: (key: string) => unknown, key: string): string[] {
+  const value = raw(key)
   return Array.isArray(value) ? (value as string[]) : []
 }
 
@@ -73,7 +72,7 @@ function Hero() {
 }
 
 function Capabilities() {
-  const { t } = useTranslation()
+  const { t, raw } = useTranslation()
 
   return (
     <section id="capabilities" className="scroll-mt-20 bg-paper">
@@ -100,7 +99,7 @@ function Capabilities() {
               const status = t(`capabilities.items.${key}.status`, {
                 defaultValue: '',
               })
-              const points = tArray(t, `capabilities.items.${key}.points`)
+              const points = tArray(raw, `capabilities.items.${key}.points`)
               const note = t(`capabilities.items.${key}.note`)
               return (
                 <li key={key} className="grid gap-5 py-8 lg:grid-cols-12 lg:gap-6">

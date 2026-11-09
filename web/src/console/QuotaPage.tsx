@@ -1,7 +1,7 @@
 // 控制台额度状态：逐单位水位 + 硬停判定 + 恢复途径。
 // 状态语义与 registry 侧 402 预检同源（quota_status，fail-closed）。
 import { useCallback, useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '../i18n-react'
 import { Link } from 'react-router-dom'
 
 import { ConsolePageHeader, ConsoleState, PeriodPicker } from './ConsoleLayout'

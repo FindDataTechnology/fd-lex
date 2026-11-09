@@ -54,7 +54,7 @@ describe('共享壳', () => {
     expect(offenders).toEqual([])
   })
 
-  it('导出面只暴露四个子模块的公开符号', () => {
+  it('导出面只暴露已登记的子模块符号（新增模块须显式登记）', () => {
     const text = readFileSync(join(KIT, 'index.ts'), 'utf-8')
     const re = /export\s+(?:type\s+)?\{[^}]+\}\s+from\s+'([^']+)'/g
     const sources = new Set<string>()
@@ -62,6 +62,7 @@ describe('共享壳', () => {
     expect([...sources].sort()).toEqual([
       './auth/index',
       './i18n/index',
+      './i18n/react',
       './shell/Layout',
       './transport/index',
     ])

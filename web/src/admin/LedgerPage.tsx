@@ -1,6 +1,6 @@
 // 后台账本：跨客户/单客户流水（周期过滤；金额口径 = lex 权威账本）。
 import { useCallback, useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '../i18n-react'
 
 import { AdminPageHeader, AdminState } from './AdminLayout'
 import {

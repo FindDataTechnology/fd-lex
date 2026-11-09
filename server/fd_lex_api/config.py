@@ -54,7 +54,19 @@ class Settings(BaseSettings):
     #: 生产值：fd-legal-search-mcp,virtual/lex-legal（含 law-bench 对外子集时追加）。
     metering_server_allowlist: str = ""
     metering_poll_limit: int = 500
-    metering_auto_create_tables: bool = True
+    #: **默认关**（2026-11-10 从 True 改过来，审计 06 §12）。
+    #:
+    #: `main._init_tables()` 在 True 时会 `create_all()` 建 metering/billing/console/
+    #: esign/matter 全套表。原默认是 True，配的注释是「alembic 就位后关闭」——
+    #: 而 alembic 链**已经就位**（`server/alembic/versions/` 三个迁移，最新
+    #: `20261109_0003_lex_matter_spine`），那个条件早就满足了、开关却没关。
+    #:
+    #: 留着 True 的后果：一个忘了设这个 env 的生产 pod 会**绕过 alembic 链**直接
+    #: `create_all()`，而 fleet 的硬规则是「schema 唯一事实源是 alembic 迁移链」。
+    #: 两套建表方式并存时，谁先跑谁定义 schema，迁移链的版本号与真实表结构就会分叉。
+    #:
+    #: 本地开发想省事就显式 `METERING_AUTO_CREATE_TABLES=1`——**显式**比默认安全。
+    metering_auto_create_tables: bool = False
     #: 周期计量驱动（审计摄取 + 闭月结算）；默认关，生产 env 开闸。
     metering_driver_enabled: bool = False
     metering_driver_interval_seconds: int = 300

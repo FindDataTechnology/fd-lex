@@ -236,7 +236,7 @@ describe('2.5 未配置如实阻塞', () => {
     expect(calls).toEqual([])
   })
 
-  it('AuthError 区分 kind，提示文案含缺失项', async () => {
+  it('AuthError 带机器码与缺失项（本地化交宿主，壳内不带语言文案）', async () => {
     const auth = createAuth({
       fetchConfig: async () => ({
         configured: false,
@@ -252,6 +252,8 @@ describe('2.5 未配置如实阻塞', () => {
     const err = await auth.beginLogin().catch((e: unknown) => e)
     expect(err).toBeInstanceOf(AuthError)
     expect((err as AuthError).kind).toBe('config')
-    expect((err as AuthError).message).toContain('LOGTO_CLIENT_ID')
+    // 消息是稳定机器码；缺失项在 detail 里，由宿主映射成本地化文案
+    expect((err as AuthError).message).toBe('auth.not_configured')
+    expect((err as AuthError).detail).toContain('LOGTO_CLIENT_ID')
   })
 })

@@ -165,7 +165,7 @@ export function createAuth(options: AuthOptions): Auth {
   }
 
   const needFetch = (): typeof fetch => {
-    if (!fetchImpl) throw new AuthError('config', 'fetch 不可用')
+    if (!fetchImpl) throw new AuthError('config', 'auth.fetch_unavailable')
     return fetchImpl
   }
 
@@ -215,7 +215,7 @@ export function createAuth(options: AuthOptions): Auth {
 
   async function tokenRequest(config: AuthConfig, body: URLSearchParams) {
     if (!config.configured) {
-      throw new AuthError('config', '认证未配置', undefined, config.missing.join(', '))
+      throw new AuthError('config', 'auth.not_configured', undefined, config.missing.join(', '))
     }
     let resp: Response
     try {
@@ -226,15 +226,15 @@ export function createAuth(options: AuthOptions): Auth {
       })
     } catch (err) {
       // 网络层失败 = 可重试，不是凭据失效
-      throw new AuthError('transient', '登录服务不可达', undefined, String(err))
+      throw new AuthError('transient', 'auth.issuer_unreachable', undefined, String(err))
     }
     if (!resp.ok) {
       const detail = await resp.text().catch(() => '')
       // 400/401 = 授权码或刷新令牌被拒 = 凭据失效
       if (resp.status === 400 || resp.status === 401) {
-        throw new AuthError('invalid', '凭据被拒绝', resp.status, detail.slice(0, 300))
+        throw new AuthError('invalid', 'auth.credentials_rejected', resp.status, detail.slice(0, 300))
       }
-      throw new AuthError('transient', '登录服务异常', resp.status, detail.slice(0, 300))
+      throw new AuthError('transient', 'auth.issuer_error', resp.status, detail.slice(0, 300))
     }
     return (await resp.json()) as Record<string, unknown>
   }
@@ -242,15 +242,15 @@ export function createAuth(options: AuthOptions): Auth {
   return {
     async config(): Promise<AuthConfig> {
       if (fetchConfig) return fetchConfig()
-      if (!configUrl) throw new AuthError('config', '缺少配置来源（configUrl 或 fetchConfig）')
+      if (!configUrl) throw new AuthError('config', 'auth.config_source_missing')
       let resp: Response
       try {
         resp = await needFetch()(configUrl)
       } catch (err) {
-        throw new AuthError('transient', '配置不可达', undefined, String(err))
+        throw new AuthError('transient', 'auth.config_unreachable', undefined, String(err))
       }
       if (!resp.ok) {
-        throw new AuthError('transient', '配置读取失败', resp.status)
+        throw new AuthError('transient', 'auth.config_unreadable', resp.status)
       }
       return (await resp.json()) as AuthConfig
     },
@@ -261,7 +261,7 @@ export function createAuth(options: AuthOptions): Auth {
         // 如实阻塞：不跳转、不假登录
         throw new AuthError(
           'config',
-          `认证未配置，缺失：${config.missing.join(', ') || '(未知)'}`,
+          'auth.not_configured',
           undefined,
           config.missing.join(', '),
         )
@@ -329,7 +329,7 @@ export function createAuth(options: AuthOptions): Auth {
 
     async refresh(session: AuthSession): Promise<AuthSession> {
       if (!session.refreshToken) {
-        throw new AuthError('invalid', '无续期凭据，请重新登录')
+        throw new AuthError('invalid', 'auth.no_refresh_token')
       }
       const config = await this.config()
       const body = new URLSearchParams({

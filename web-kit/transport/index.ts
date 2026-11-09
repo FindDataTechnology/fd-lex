@@ -56,7 +56,7 @@ export function createTransport(options: TransportOptions): Transport {
   const base = baseUrl.replace(/\/$/, '')
 
   async function once(path: string, init: RequestInit, token: string | null): Promise<Response> {
-    if (!doFetch) throw new TransportError('fetch 不可用')
+    if (!doFetch) throw new TransportError('transport.fetch_unavailable')
     const headers = new Headers(init.headers ?? {})
     if (token) headers.set('Authorization', `Bearer ${token}`)
     if (init.body && !headers.has('Content-Type')) {
@@ -71,7 +71,7 @@ export function createTransport(options: TransportOptions): Transport {
         signal: init.signal ?? controller.signal,
       })
     } catch (err) {
-      throw new TransportError('请求失败', undefined, redact(String(err)) as string)
+      throw new TransportError('transport.request_failed', undefined, redact(String(err)) as string)
     } finally {
       clearTimeout(timer)
     }
@@ -87,11 +87,11 @@ export function createTransport(options: TransportOptions): Transport {
       }
     }
     if (resp.status === 401) {
-      throw new TransportError('未认证', 401, redact(await resp.text().catch(() => '')) as string)
+      throw new TransportError('transport.unauthenticated', 401, redact(await resp.text().catch(() => '')) as string)
     }
     if (!resp.ok) {
       const detail = await resp.text().catch(() => '')
-      throw new TransportError(`请求失败：${resp.status}`, resp.status, (redact(detail) as string).slice(0, 500))
+      throw new TransportError(`transport.http_${resp.status}`, resp.status, (redact(detail) as string).slice(0, 500))
     }
     if (resp.status === 204) return undefined as T
     const text = await resp.text()

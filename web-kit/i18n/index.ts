@@ -16,10 +16,11 @@ export interface I18n<T> {
   messages(): T
 }
 
-type Leaves<T> = T extends string
+/** 叶子一律放宽为 string，但**键结构必须逐一相同**。 */
+export type SameShape<T> = T extends string
   ? string
   : T extends Record<string, unknown>
-    ? { [K in keyof T]: Leaves<T[K]> }
+    ? { [K in keyof T]: SameShape<T[K]> }
     : string
 
 function walk(obj: unknown, prefix = '', out: Record<string, string> = {}) {
@@ -55,16 +56,24 @@ export function assertLocaleParity(zh: unknown, en: unknown): void {
   }
 }
 
-export interface I18nOptions<T> {
-  zh: Leaves<T>
-  en: Leaves<T>
+export interface I18nOptions<T extends Record<string, unknown>> {
+  /**
+   * 形状由 zh 决定。
+   *
+   * 注意：这里 MUST 是裸的 `T`，不能写成 `SameShape<T>`——从映射/条件类型
+   * 反推 T 会失败并退回约束上界，于是窄 en 也被判"可接受"，少键照样过编译
+   * （2026-11-10 两次实测：先 NoInfer、后 Leaves 都拦不住）。
+   */
+  zh: T
+  /** en 必须与 zh 同形（键结构逐一相同，叶子放宽为 string）。 */
+  en: SameShape<T>
   initial?: Locale
   /** 初始语言的来源（如浏览器语言）；缺省 zh */
   detect?: () => Locale | null
 }
 
 export function createI18n<T extends Record<string, unknown>>(options: I18nOptions<T>): I18n<T> {
-  const { zh, en } = options
+  const { zh, en } = options as { zh: T; en: SameShape<T> }
   // 构建期即校验：宿主包进 CI 的对等门在运行前就失败
   assertLocaleParity(zh, en)
   const tables: Record<Locale, Record<string, string>> = {

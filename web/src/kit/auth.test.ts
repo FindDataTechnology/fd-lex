@@ -12,7 +12,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthError, createAuth, type AuthConfig } from './auth/index'
 
 const ISSUER = 'https://auth.test.example'
-const SESSION = 'test.session'
 const PKCE = 'test.pkce'
 
 function b64url(obj: Record<string, unknown>): string {

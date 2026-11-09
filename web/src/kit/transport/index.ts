@@ -55,7 +55,7 @@ export function createTransport(options: TransportOptions): Transport {
   const doFetch = options.fetchImpl ?? (typeof fetch === 'function' ? fetch.bind(globalThis) : undefined)
   const base = baseUrl.replace(/\/$/, '')
 
-  async function once<T>(path: string, init: RequestInit, token: string | null): Promise<Response> {
+  async function once(path: string, init: RequestInit, token: string | null): Promise<Response> {
     if (!doFetch) throw new TransportError('fetch 不可用')
     const headers = new Headers(init.headers ?? {})
     if (token) headers.set('Authorization', `Bearer ${token}`)

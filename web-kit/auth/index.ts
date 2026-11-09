@@ -284,7 +284,7 @@ export function createAuth(options: AuthOptions): Auth {
       assign(`${config.issuer}/oidc/auth?${params.toString()}`)
     },
 
-    async completeLogin(): Promise<boolean> {
+    async completeLogin(): Promise<{ ok: boolean; returnTo?: string }> {
       if (typeof window === 'undefined') return { ok: false }
       const url = new URL(window.location.href)
       const code = url.searchParams.get('code')

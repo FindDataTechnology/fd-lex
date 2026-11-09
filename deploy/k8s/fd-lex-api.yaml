@@ -1,6 +1,8 @@
 # fd-lex-api — prod (fd-prod)
 # 识律平台 API（计量/结算/对账/内部管理面，FastAPI on :8000）。
 # 只暴露 ClusterIP；控制台将来经 web/nginx /api/ 反代启用（wire 同法）。
+# 2026-11-09 sha-9183f74：案件脊柱（change lex-matter-spine，源真 c6177c3）——
+# initContainer 将执行迁移 0003_lex_matter（已在 cheap-3 真实库副本验证后上产）。
 # env ← Secret fd-lex-env（键名表 deploy/README.md；清单无明文）。
 apiVersion: apps/v1
 kind: Deployment
@@ -33,7 +35,7 @@ spec:
       # 依赖 create_all（生产 METERING_AUTO_CREATE_TABLES=false）。
       initContainers:
         - name: migrate
-          image: ccr.ccs.tencentyun.com/finddata-business/fd-lex-api:sha-0a2eff5
+          image: ccr.ccs.tencentyun.com/finddata-business/fd-lex-api:sha-9183f74
           imagePullPolicy: IfNotPresent
           command: ["alembic", "upgrade", "head"]
           envFrom:
@@ -44,7 +46,7 @@ spec:
             limits: { cpu: 100m, memory: 128Mi }
       containers:
         - name: api
-          image: ccr.ccs.tencentyun.com/finddata-business/fd-lex-api:sha-0a2eff5
+          image: ccr.ccs.tencentyun.com/finddata-business/fd-lex-api:sha-9183f74
           imagePullPolicy: IfNotPresent
           ports:
             - name: http

@@ -132,7 +132,7 @@ export function createAuth(options: AuthOptions): Auth {
     useNonce = true,
     defaultReturnTo,
     now = () => Date.now(),
-    fetchImpl = typeof fetch === 'function' ? fetch.bind(globalThis) : undefined,
+    fetchImpl, // 缺省时每次调用再解析（见 needFetch）：构造期绑定会让测试替身/运行时替换失效
     assign = (url: string) => {
       if (typeof window !== 'undefined') window.location.assign(url)
     },
@@ -168,8 +168,10 @@ export function createAuth(options: AuthOptions): Auth {
   }
 
   const needFetch = (): typeof fetch => {
-    if (!fetchImpl) throw new AuthError('config', 'auth.fetch_unavailable')
-    return fetchImpl
+    // 每次调用再解析：既尊重宿主的显式注入，也支持运行时替换（含测试替身）
+    const impl = fetchImpl ?? (typeof fetch === 'function' ? fetch : undefined)
+    if (!impl) throw new AuthError('config', 'auth.fetch_unavailable')
+    return impl
   }
 
   function loadSession(): AuthSession | null {

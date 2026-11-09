@@ -52,10 +52,13 @@ export function redact(value: unknown): unknown {
 
 export function createTransport(options: TransportOptions): Transport {
   const { baseUrl, getToken, onUnauthorized, timeoutMs = 20_000 } = options
-  const doFetch = options.fetchImpl ?? (typeof fetch === 'function' ? fetch.bind(globalThis) : undefined)
+  // 同 auth：每次调用再解析，避免构造期绑定让测试替身/运行时替换失效
+  const resolveFetch = () =>
+    options.fetchImpl ?? (typeof fetch === 'function' ? fetch : undefined)
   const base = baseUrl.replace(/\/$/, '')
 
   async function once(path: string, init: RequestInit, token: string | null): Promise<Response> {
+    const doFetch = resolveFetch()
     if (!doFetch) throw new TransportError('transport.fetch_unavailable')
     const headers = new Headers(init.headers ?? {})
     if (token) headers.set('Authorization', `Bearer ${token}`)

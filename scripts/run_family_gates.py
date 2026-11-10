@@ -13,6 +13,7 @@
 用法：
     python3 fd-lex/scripts/run_family_gates.py              # 全部
     python3 fd-lex/scripts/run_family_gates.py --skip-tests # 只跑静态门（快）
+    python3 fd-lex/scripts/run_family_gates.py --with-deploy # 加查三站线上 bundle（联网）
     python3 fd-lex/scripts/run_family_gates.py --host fd-shilun
 
 退出码：0 全绿 / 1 有红（逐条列出哪个门、哪个宿主）。
@@ -55,6 +56,12 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--host", choices=sorted(HOSTS))
     ap.add_argument("--skip-tests", action="store_true")
+    # 线上核验要联网，默认不跑：离线环境下它会假红，而"门外红"比"没这道门"更误导。
+    ap.add_argument(
+        "--with-deploy",
+        action="store_true",
+        help="额外核验三站线上 bundle 与本地构建一致（需联网）",
+    )
     ap.add_argument("--verbose", action="store_true")
     args = ap.parse_args()
 
@@ -67,6 +74,10 @@ def main() -> int:
         ("locale-parity", [sys.executable, str(SCRIPTS / "check_locale_parity.py")]),
         ("no-literals", [sys.executable, str(SCRIPTS / "check_no_literals.py")]),
     ]
+    if args.with_deploy and not args.host:
+        static_gates.append(
+            ("deploy-live", [sys.executable, str(SCRIPTS / "check_web_deploy.py")])
+        )
     for name, cmd in static_gates:
         if args.host:
             cmd = cmd + ["--host", args.host]

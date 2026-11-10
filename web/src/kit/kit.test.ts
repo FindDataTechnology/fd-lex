@@ -63,6 +63,9 @@ describe('共享壳', () => {
       './auth/index',
       './i18n/index',
       './i18n/react',
+      // 设计原语（2026-11-10，group 5 降级实现）：显式登记——新增导出面必须过这一关，
+      // 否则"导出面刻意最小"就成了没人守的口号。
+      './primitives/index',
       './shell/Layout',
       './transport/index',
     ])

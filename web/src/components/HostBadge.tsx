@@ -1,4 +1,5 @@
 import { useTranslation } from '../i18n-react'
+import { StatusPill, type StatusTone } from '../kit/primitives/index'
 
 export type CapabilityHost = 'both' | 'private'
 
@@ -19,7 +20,10 @@ function HostBadge({ host, variant = 'light', label, className = '' }: HostBadge
   const { t } = useTranslation()
   const text = label ?? t(host === 'both' ? 'badge.both' : 'badge.privateOnly')
 
-  const tone =
+  // 视觉不变：调色板仍由本宿主给（经 toneClassName 整串注入），原语只负责形状。
+  // 语义 tone 只用于未注入时的 CSS 变量兜底与 data-tone 属性。
+  const tone: StatusTone = host === 'both' ? 'neutral' : 'warn'
+  const toneClass =
     host === 'both'
       ? variant === 'light'
         ? 'border-line-strong text-ink-soft'
@@ -29,32 +33,38 @@ function HostBadge({ host, variant = 'light', label, className = '' }: HostBadge
         : 'border-[#d98a76]/40 bg-seal/25 text-[#f0c3b6]'
 
   return (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${tone} ${className}`}
+    <StatusPill
+      tone={tone}
+      variant={variant}
+      toneClassName={{ neutral: toneClass, warn: toneClass }}
+      // 尺寸/间距/字重归宿主（原语只管形状与语义），故这里显式给回旧值
+      className={`gap-1.5 px-2.5 py-0.5 text-xs font-medium ${className}`.trim()}
+      icon={
+        <svg aria-hidden="true" width="14" height="8" viewBox="0 0 14 8">
+          {host === 'both' ? (
+            <>
+              <circle cx="3.5" cy="4" r="2.6" fill="currentColor" />
+              <circle cx="10.5" cy="4" r="2.6" fill="currentColor" />
+            </>
+          ) : (
+            <>
+              <circle
+                cx="3.5"
+                cy="4"
+                r="2.1"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1"
+                strokeDasharray="1.6 1.4"
+              />
+              <circle cx="10.5" cy="4" r="2.6" fill="currentColor" />
+            </>
+          )}
+        </svg>
+      }
     >
-      <svg aria-hidden="true" width="14" height="8" viewBox="0 0 14 8">
-        {host === 'both' ? (
-          <>
-            <circle cx="3.5" cy="4" r="2.6" fill="currentColor" />
-            <circle cx="10.5" cy="4" r="2.6" fill="currentColor" />
-          </>
-        ) : (
-          <>
-            <circle
-              cx="3.5"
-              cy="4"
-              r="2.1"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1"
-              strokeDasharray="1.6 1.4"
-            />
-            <circle cx="10.5" cy="4" r="2.6" fill="currentColor" />
-          </>
-        )}
-      </svg>
       {text}
-    </span>
+    </StatusPill>
   )
 }
 

@@ -11,9 +11,14 @@
     （带 stable_id 溯源）、评审结论来自 live `validation_check` 的实际返回
     （当前语料下是 degraded=true，必须如实带进产物，不能改写成"通过"）。
 
-链路：建案 → statute_hit(真) → case_hit(真, 来自 real 检索面或显式缺省) →
-elementized → contract_draft → review_report(真 validation_check) → esign_task，
-断言：六类产物齐全、边全通无断链、`esign_task.anchor_sha256 == contract_draft.sha256`。
+链路：建案 → statute_hit（真 law_search）→ case_hit（真 legal_docs_search /
+guide_cases_search）→ elementized → contract_draft → review_report（真
+validation_check，degraded 如实带出）→ esign_task，
+断言：五类产物齐全、边全通无断链、`esign_task.anchor_sha256 == contract_draft.sha256`。
+
+**两个 MCP 分工**（别混）：检索面（法条/类案）在 `fd-legal-search-mcp`
+（默认 `:31884`，无需 token）；装配/评审面在 law-bench（`:30840`，需 `MCP_HTTP_TOKEN`）。
+溯源三件套一律取**检索服务原生返回**，不由调用方拼接。
 
 用法：
     MCP_TOKEN=... MCP_URL=http://cheap6.mesh.finddata.cn:30840/mcp \
@@ -72,8 +77,20 @@ def live_call(url: str, token: str | None, tool: str, args: dict) -> dict:
                            "params": {"name": tool, "arguments": args}}, sid, token)
     result = reply.get("result") or {}
     if result.get("isError"):
-        raise RuntimeError(f"{tool} 返回 isError=true")
+        # 把工具自己说的话带出来：只报 "isError=true" 等于把排查成本推给下一个人
+        # （本仓反复踩过"读不到当成不存在"）。
+        detail = ""
+        for item in result.get("content") or []:
+            if isinstance(item, dict) and item.get("type") == "text":
+                detail = str(item.get("text"))[:400]
+                break
+        raise RuntimeError(f"{tool} 返回 isError=true —— {detail or '（无 content 文本）'}")
     return result.get("structuredContent") or {}
+
+
+def sha(text: str) -> str:
+    """规范化文本指纹：UTF-8 + LF（与 contracts/lex-artifact.schema.json 口径一致）。"""
+    return hashlib.sha256(text.replace("\r\n", "\n").encode()).hexdigest()
 
 
 # ── 主链 ───────────────────────────────────────────────────────────────────
@@ -82,8 +99,11 @@ def main() -> int:
     url = os.environ.get("MCP_URL", "http://cheap6.mesh.finddata.cn:30840/mcp")
     token = os.environ.get("MCP_TOKEN") or None
     if not token:
-        print("缺 MCP_TOKEN", file=sys.stderr)
+        print("缺 MCP_TOKEN（law-bench 侧需要）", file=sys.stderr)
         return 1
+    # 检索面是另一个 MCP：fd-legal-search-mcp（法条/类案在这里，不在 law-bench）
+    search_url = os.environ.get("SEARCH_MCP_URL", "http://cheap6.mesh.finddata.cn:31884/mcp")
+    search_token = os.environ.get("SEARCH_MCP_TOKEN") or None
 
     # 临时库没有迁移链可跑，必须显式打开自动建表（与 tests/conftest.py 同一惯例：
     # 测试/脚本要建表就明说，生产靠迁移链就不该默认建）。不设这个会撞
@@ -93,13 +113,27 @@ def main() -> int:
     os.environ.setdefault("ESIGN_FILE_STORE_DIR", "/tmp/lex-esign")
 
     print("① 采 live 真数据…")
-    refs = live_call(url, token, "law_references", {}).get("result") or []
-    if not refs:
-        print("  ✗ law_references 为空——没有真实法条可当依据，本项作废", file=sys.stderr)
+    # 法条：走**真实检索面** law_search（原生 provenance 三件套由检索服务给出，
+    # 不是我拼的）。之前用 law-bench 的 law_references 聚合列表，那是"书目"不是"检索"。
+    law_hits = (live_call(search_url, search_token, "law_search", {"title_query": "民法典"})
+                .get("results") or [])
+    if not law_hits:
+        print("  ✗ law_search 无结果——没有真实法条可当依据，本项作废", file=sys.stderr)
         return 1
-    # 选一条真实条目做法条依据（优先核心法律）
-    ref = next((r for r in refs if r.get("category") == "core_law"), refs[0])
-    print(f"  法条条目 {len(refs)} 条；取样：{ref['name']} stable_id={ref['stable_id']}")
+    law = next((h for h in law_hits if (h.get("provenance") or {}).get("stable_id")), law_hits[0])
+    print(f"  法条命中 {len(law_hits)} 条；取样：{law['title']} "
+          f"stable_id={(law.get('provenance') or {}).get('stable_id')}")
+
+    # 类案：优先人民法院案例库（legal_docs_search），退回指导案例（guide_cases_search）
+    case = None
+    for tool, key in (("legal_docs_search", "results"), ("guide_cases_search", "results")):
+        hits = live_call(search_url, search_token, tool, {"title_query": "买卖合同"}).get(key) or []
+        if hits:
+            case, case_tool, case_count = hits[0], tool, len(hits)
+            print(f"  类案命中 {len(hits)} 条（{tool}）；取样：{case.get('title')}")
+            break
+    if case is None:
+        print("  ✗ 类案面（legal_docs_search / guide_cases_search）均无结果", file=sys.stderr)
 
     lawinfo = live_call(url, token, "law_info", {"contract_type": "sale"})
     meta = live_call(url, token, "type_metadata", {"contract_type": "sale"})
@@ -133,22 +167,36 @@ def main() -> int:
             print("② 落产物（法条/评审用 live 真返回）…")
             statute = add(
                 kind="statute_hit",
-                title=ref["name"],
-                producer={"line": "lex", "server": "law-bench", "tool": "law_references", "version": "sha-2f85e53"},
+                title=law["title"],
+                producer={"line": "lex", "server": "fd-legal-search-mcp", "tool": "law_search",
+                          "version": "live"},
                 refs=[],
-                sha256=hashlib.sha256(json.dumps(ref, ensure_ascii=False, sort_keys=True).encode()).hexdigest(),
-                payload={"name": ref["name"], "category": ref.get("category"),
-                         "contract_types": ref.get("contract_types"), "occurrences": ref.get("occurrences")},
-                # 溯源三件套全部来自 live 返回，不是手写常量
-                provenance={"source": "law_info.law_references", "stable_id": ref["stable_id"],
-                            "as_of": "2026-11-11"},
+                sha256=sha(json.dumps(law, ensure_ascii=False, sort_keys=True)),
+                payload={"law_id": str(law.get("id")), "category": law.get("category"),
+                         "type": law.get("type"), "status": law.get("status")},
+                # 溯源三件套**由检索服务原生给出**（law_db.laws / stable_id / as_of），
+                # 不是我在调用方拼的——这正是"契约与检索侧守卫同构"那条要求。
+                provenance=dict(law["provenance"]),
             )
-            # 类案：当前检索后端不可用（search_clauses → ConfigError），如实记为"无结果"而非伪造
-            print("  类案检索：search_clauses 当前报 upstream_unavailable，本跳记为无结果（不伪造）")
+            # 类案：真命中人民法院案例库/指导案例（第六跳不再是空）
+            case_art = None
+            if case is not None:
+                case_art = add(
+                    kind="case_hit",
+                    title=case.get("title") or "",
+                    producer={"line": "lex", "server": "fd-legal-search-mcp", "tool": case_tool,
+                              "version": "live"},
+                    refs=[],
+                    sha256=sha(json.dumps(case, ensure_ascii=False, sort_keys=True)),
+                    payload={k: case.get(k) for k in ("source_id", "id", "case_no", "doc_type",
+                                                      "source", "doc_type", "source_label_zh")
+                             if k in case},
+                    provenance=dict(case["provenance"]),
+                )
             elementized = add(
                 kind="elementized",
                 producer={"line": "lex", "server": "facet-pack", "tool": "format-conversion-elementized", "version": "v5"},
-                refs=[statute["id"]],
+                refs=[statute["id"]] + ([case_art["id"]] if case_art else []),
                 sha256=DOC_SHA,
                 payload={"elements": [{"field": "诉讼请求", "origin": "取自原文"}],
                          "law_types": (lawinfo.get("zh_name") or ""), "slots_count": meta.get("slot_count")},
@@ -194,12 +242,21 @@ def main() -> int:
             check((elementized["id"], statute["id"], "cites") in edges, "要素式 → 法条 cites 边存在")
             check(all(e["broken"] is False for e in graph["edges"]), "无断链标记")
             check({n["kind"] for n in graph["nodes"]} >=
-                  {"statute_hit", "elementized", "contract_draft", "review_report"},
-                  "五类产物齐全（case_hit 缺失已如实记录）")
+                  {"statute_hit", "case_hit", "elementized", "contract_draft", "review_report"},
+                  "五类产物齐全（含 case_hit 类案命中）")
+            if case_art is not None:
+                check((elementized["id"], case_art["id"], "cites") in edges, "要素式 → 类案 cites 边存在")
 
             prov = nodes[statute["id"]].get("provenance") or {}
-            check(prov.get("stable_id") == ref["stable_id"] and bool(prov.get("source")) and bool(prov.get("as_of")),
-                  f"法条产物溯源三件套完整（stable_id={prov.get('stable_id')}）")
+            check(prov.get("stable_id") == (law.get("provenance") or {}).get("stable_id")
+                  and bool(prov.get("source")) and bool(prov.get("as_of")),
+                  f"法条产物溯源三件套完整（source={prov.get('source')}, stable_id={prov.get('stable_id')}, "
+                  f"as_of={prov.get('as_of')}）")
+            if case_art is not None:
+                cprov = nodes[case_art["id"]].get("provenance") or {}
+                check(bool(cprov.get("source")) and bool(cprov.get("stable_id")) and bool(cprov.get("as_of")),
+                      f"类案产物溯源三件套完整（source={cprov.get('source')}, "
+                      f"stable_id={cprov.get('stable_id')}, as_of={cprov.get('as_of')}）")
             # 图节点不带 payload（只带 kind/provenance/边），故从落产物时的返回里取
             check((review.get("payload") or {}).get("validation", {}).get("degraded") is True,
                   "评审产物如实带 degraded=true（未伪装成合规）")
@@ -240,7 +297,10 @@ def main() -> int:
     if failures:
         print(f"✗ {len(failures)} 条不满足", file=sys.stderr)
         return 1
-    print("✓ live 数据链路闭合：真法条依据 + 真评审结论，锚定哈希闭合成环")
+    print("✓ live 数据链路闭合：真法条（law_db.laws）+ 真类案（"
+          f"{case_tool} → {case.get('provenance', {}).get('source')}）+ 真评审结论"
+          f"（checked={review_live.get('checked_constraints')}, degraded={review_live.get('degraded')}），"
+          "锚定哈希闭合成环")
     return 0
 
 

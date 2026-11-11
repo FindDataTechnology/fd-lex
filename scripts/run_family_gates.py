@@ -14,6 +14,7 @@
     python3 fd-lex/scripts/run_family_gates.py              # 全部
     python3 fd-lex/scripts/run_family_gates.py --skip-tests # 只跑静态门（快）
     python3 fd-lex/scripts/run_family_gates.py --with-deploy # 加查三站线上 bundle（联网）
+    python3 fd-lex/scripts/run_family_gates.py --with-browser # 加跑浏览器证据（要 dist + playwright）
     python3 fd-lex/scripts/run_family_gates.py --host fd-shilun
 
 退出码：0 全绿 / 1 有红（逐条列出哪个门、哪个宿主）。
@@ -62,6 +63,11 @@ def main() -> int:
         action="store_true",
         help="额外核验三站线上 bundle 与本地构建一致（需联网）",
     )
+    ap.add_argument(
+        "--with-browser",
+        action="store_true",
+        help="额外跑浏览器证据（令牌可驱动渲染 / 页面级暗色徽标，需本地已构建 + playwright）",
+    )
     ap.add_argument("--verbose", action="store_true")
     args = ap.parse_args()
 
@@ -89,6 +95,17 @@ def main() -> int:
         for host, web in hosts.items():
             code, out = run(["npm", "test", "--silent"], cwd=web, timeout=900)
             results.append((host, "vitest", code, out))
+
+    # ---- 浏览器证据（默认不跑：要 dist + playwright，缺哪个都会假红） ----
+    if args.with_browser:
+        for host, web in hosts.items():
+            code, out = run(["node", str(SCRIPTS / "verify_dark_tokens.js"), str(web / "dist")])
+            results.append((host, "dark-tokens", code, out))
+        # 页面级暗色证据只对 fd-zhesi 成立：只有它的 StabilityBadge 走变量路径，
+        # fd-shilun 三个徽标仍传 toneClassName（宿主显式配色，按设计不随主题变）。
+        if not args.host or args.host == "fd-zhesi":
+            code, out = run(["node", str(SCRIPTS / "verify_dark_badges.js")])
+            results.append(("fd-zhesi", "dark-badges", code, out))
 
     failed = [r for r in results if r[2] != 0]
     for host, gate, code, out in results:

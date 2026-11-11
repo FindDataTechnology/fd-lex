@@ -18,6 +18,7 @@ from fastapi import APIRouter, Header, HTTPException, status
 
 from .assertion import AssertionRejected, AssertionSettings, JitPolicy, verify_assertion
 from .config import get_settings
+from .console_api.delegation import DelegationDenied, authorize_delegation
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -36,6 +37,13 @@ _STATUS = {
     AssertionRejected.UNKNOWN_IDENTITY: status.HTTP_403_FORBIDDEN,
     AssertionRejected.CONSENT_REQUIRED: status.HTTP_403_FORBIDDEN,
 }
+
+
+def _session():
+    """console 面的库会话（console_* 表与 billing 同库）。"""
+    from .metering.db import get_sessionmaker
+
+    return get_sessionmaker()()
 
 
 def assertion_settings() -> AssertionSettings:
@@ -80,9 +88,34 @@ def exchange(authorization: str | None = Header(default=None)) -> dict[str, Any]
                 AssertionRejected.NOT_CONFIGURED,
             ) else None,
         ) from exc
+    # 验签只回答"这份断言是真的"；下面回答"这个平台被允许代这个人做什么"。
+    settings_db = _session()
+    try:
+        decision = authorize_delegation(
+            settings_db,
+            subject=ident.sub,
+            platform_subject=ident.issuer,
+            requested_scope=ident.scope,
+            jit_policy=settings.jit_policy,
+        )
+    except DelegationDenied as exc:
+        raise HTTPException(
+            status_code=(
+                status.HTTP_403_FORBIDDEN
+                if exc.reason != DelegationDenied.BINDING_REQUIRED
+                else status.HTTP_409_CONFLICT
+            ),
+            detail={"reason": exc.reason, "detail": exc.detail},
+        ) from exc
+    finally:
+        settings_db.close()
+
     return {
         "sub": ident.sub,
-        "scope": list(ident.scope),
+        "customer_id": decision.customer_id,
+        # 生效 scope：consent 档下是"断言 ∩ 授权"，不放大。
+        "scope": list(decision.scope),
+        "consent_id": decision.consent_id,
         "issuer": ident.issuer,
         "audience": ident.audience,
         "expires_at": ident.expires_at,

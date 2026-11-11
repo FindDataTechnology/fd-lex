@@ -90,6 +90,43 @@ class ConsoleCredentialEvent(ConsoleBase):
         }
 
 
+class ConsolePlatformConsent(ConsoleBase):
+    """平台服务主体代某客户的授权行（converge-line-identity-and-keys 2.2）。
+
+    ``consent`` 档下，绑定存在还不够：平台要代该客户做事，必须有一条**显式、
+    可审计、可撤销**的授权行。撤销用 ``revoked_at`` 留痕——删行会让"曾经授权过"
+    这件事消失，而审计要看的正是这个。
+    """
+
+    __tablename__ = "console_platform_consents"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    #: 软引用 billing_customers.id（同 ConsoleIdentityBinding，不建 FK）
+    customer_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    #: 被信任的平台服务主体（断言的 iss 或 iss+sub 组合）
+    platform_subject: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    #: 授予的 scope（空格分隔；与断言 scope 取交集，不放大权限）
+    scope: Mapped[str] = mapped_column(String(512), nullable=False, default="")
+    #: 谁会话/哪条链路授权了它（审计起点）
+    granted_by: Mapped[str | None] = mapped_column(String(255))
+    granted_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow
+    )
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    def as_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "customer_id": self.customer_id,
+            "platform_subject": self.platform_subject,
+            "scope": self.scope,
+            "granted_by": self.granted_by,
+            "granted_at": self.granted_at.isoformat() if self.granted_at else None,
+            "revoked_at": self.revoked_at.isoformat() if self.revoked_at else None,
+            "active": self.revoked_at is None,
+        }
+
+
 def _load_groups(raw: str | None) -> list[str]:
     if not raw:
         return []

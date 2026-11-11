@@ -14,6 +14,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
@@ -74,7 +76,16 @@ def _bind(engine, identity: str = IDENTITY) -> int:
         customer = Customer(name="Consent Demo", sub2api_user_id=f"u-{identity}", plan_id=plan.id)
         s.add(customer)
         s.commit()
-        s.add(ConsoleIdentityBinding(customer_id=customer.id, identity=identity))
+        # 4.3 之后平台代做只认**本人已确认**的绑定；本用例验的是兑换链路而非
+        # 确认环节（确认有专门用例），故这里直接建成已确认。
+        s.add(
+            ConsoleIdentityBinding(
+                customer_id=customer.id,
+                identity=identity,
+                confirmed_at=datetime.now(timezone.utc),
+                confirmed_via="self",
+            )
+        )
         s.commit()
         return customer.id
 

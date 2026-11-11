@@ -24,13 +24,15 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..billing.models import Customer
-from .identity import resolve_console_customer
+from .identity import binding_for, resolve_console_customer
 from .models import ConsolePlatformConsent
 
 __all__ = ["DelegationDecision", "DelegationDenied", "authorize_delegation", "grant_consent"]
 
-#: 绑定存在但策略要求的授权行缺失/已撤销
+#: 该身份没有任何绑定行
 BINDING_REQUIRED = "binding_required"
+#: 有绑定行，但本人尚未确认（管理员预绑定，4.3）
+CONFIRMATION_REQUIRED = "confirmation_required"
 
 
 class DelegationDenied(Exception):
@@ -38,6 +40,7 @@ class DelegationDenied(Exception):
 
     JIT_DISABLED = "jit_disabled"
     BINDING_REQUIRED = BINDING_REQUIRED
+    CONFIRMATION_REQUIRED = CONFIRMATION_REQUIRED
     CONSENT_REQUIRED = "consent_required"
     SCOPE_EMPTY = "scope_empty"
 
@@ -77,7 +80,17 @@ def authorize_delegation(
     if jit_policy == "off":
         raise DelegationDenied(DelegationDenied.JIT_DISABLED, "jit_policy=off")
 
-    customer: Customer | None = resolve_console_customer(db, subject)
+    # 确认这一步在这里把住（4.3）：管理员可以替组织预绑定，但"管理员说这是你"
+    # 不等于"这是你"——预绑定行未经本人确认前，平台不得代他做事。
+    binding = binding_for(db, subject)
+    if binding is not None and not binding.is_confirmed:
+        raise DelegationDenied(
+            DelegationDenied.CONFIRMATION_REQUIRED,
+            f"identity {subject!r} is pre-bound to customer {binding.customer_id} "
+            "but has not confirmed yet; the member must confirm once",
+        )
+
+    customer: Customer | None = resolve_console_customer(db, subject, require_confirmed=True)
     if customer is None:
         # 铁律：身份永不自动创建。这里只回答"没有绑定"，不去建。
         raise DelegationDenied(

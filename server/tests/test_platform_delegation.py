@@ -13,6 +13,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -48,7 +50,15 @@ def _plan(db) -> Plan:
     return plan
 
 
-def _bound_customer(db, identity: str = "alice", sub2api_user_id: str | None = None) -> Customer:
+def _bound_customer(
+    db, identity: str = "alice", sub2api_user_id: str | None = None, *, confirmed: bool = True
+) -> Customer:
+    """建一个已绑定的客户。
+
+    ``confirmed=True`` 表示**本人已确认**（4.3 之后平台代做只认这种）；测试默认
+    走它，因为多数用例想验的是策略分支而不是确认本身——确认分支由
+    ``test_prebound_but_unconfirmed_*`` 专门盯。
+    """
     plan = _plan(db)
     customer = Customer(
         name=identity.title(), sub2api_user_id=sub2api_user_id or identity, plan_id=plan.id
@@ -56,7 +66,14 @@ def _bound_customer(db, identity: str = "alice", sub2api_user_id: str | None = N
     db.add(customer)
     db.commit()
     db.refresh(customer)
-    db.add(ConsoleIdentityBinding(customer_id=customer.id, identity=identity))
+    db.add(
+        ConsoleIdentityBinding(
+            customer_id=customer.id,
+            identity=identity,
+            confirmed_at=datetime.now(timezone.utc) if confirmed else None,
+            confirmed_via="self" if confirmed else None,
+        )
+    )
     db.commit()
     return customer
 
@@ -168,3 +185,75 @@ def test_revoke_takes_effect_immediately_and_keeps_the_row(db):
     # 撤销要留痕（审计要看"曾经授权过"），不是删行
     assert db.query(type(row)).count() == 1
     assert revoke_consent(db, row.id) is False, "重复撤销应幂等返回 False"
+
+
+# ── 4.3 组织级预绑定：管理员建档 ≠ 本人确认 ────────────────────────────────
+
+
+def test_prebound_but_unconfirmed_is_refused_with_its_own_reason(db):
+    """预绑定但本人没确认 → `confirmation_required`，不是 `binding_required`。
+
+    两个原因码必须分开：前者要本人点一次确认（自助可解），后者要管理员建档。
+    混成一个，调用方就会把"去确认"的人指去"申请绑定"，运营再告诉他"已经建好了"。
+    """
+    _bound_customer(db, confirmed=False)
+    with pytest.raises(DelegationDenied) as e:
+        authorize_delegation(
+            db, subject="alice", platform_subject="https://platform.test",
+            requested_scope=("line:read",), jit_policy="first-use",
+        )
+    assert e.value.reason == DelegationDenied.CONFIRMATION_REQUIRED
+
+
+def test_unconfirmed_binding_does_not_fall_back_to_sub2api_user_id(db):
+    """预绑定未确认时**不许**回落到 sub2api_user_id——那等于给预绑定配一把备用钥匙。"""
+    customer = _bound_customer(db, confirmed=False)
+    assert customer.sub2api_user_id == "alice"
+    with pytest.raises(DelegationDenied) as e:
+        authorize_delegation(
+            db, subject="alice", platform_subject="https://platform.test",
+            requested_scope=("line:read",), jit_policy="first-use",
+        )
+    assert e.value.reason == DelegationDenied.CONFIRMATION_REQUIRED
+
+
+def test_confirming_switches_the_same_row_to_accepted(db):
+    """确认之后同一行就被采信——不需要重建绑定，也不能有两行。"""
+    from fd_lex_api.console_api.identity import binding_for
+
+    customer = _bound_customer(db, confirmed=False)
+    row = binding_for(db, "alice")
+    row.confirmed_at = datetime.now(timezone.utc)
+    row.confirmed_via = "self"
+    db.commit()
+
+    decision = authorize_delegation(
+        db, subject="alice", platform_subject="https://platform.test",
+        requested_scope=("line:read",), jit_policy="first-use",
+    )
+    assert decision.customer_id == customer.id
+    assert db.query(ConsoleIdentityBinding).count() == 1
+
+
+def test_off_still_rejects_even_when_confirmed(db):
+    """`off` 档不看确认状态：一律拒，连绑定都不查。"""
+    _bound_customer(db, confirmed=True)
+    with pytest.raises(DelegationDenied) as e:
+        authorize_delegation(
+            db, subject="alice", platform_subject="https://platform.test",
+            requested_scope=("line:read",), jit_policy="off",
+        )
+    assert e.value.reason == DelegationDenied.JIT_DISABLED
+
+
+def test_consent_policy_also_requires_confirmation_first(db):
+    """`consent` 档不能跳过确认：授权行齐了但本人没确认，仍然拒。"""
+    _bound_customer(db, confirmed=False)
+    grant_consent(db, customer_id=1, platform_subject="https://platform.test",
+                  scope="line:read", granted_by="alice@lex")
+    with pytest.raises(DelegationDenied) as e:
+        authorize_delegation(
+            db, subject="alice", platform_subject="https://platform.test",
+            requested_scope=("line:read",), jit_policy="consent",
+        )
+    assert e.value.reason == DelegationDenied.CONFIRMATION_REQUIRED

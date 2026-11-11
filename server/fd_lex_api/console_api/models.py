@@ -29,12 +29,37 @@ def utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def iso_utc(value: datetime | None) -> str | None:
+    """ISO 串一律带 UTC 偏移。
+
+    为什么需要这个：SQLite 取回的 ``DateTime(timezone=True)`` 是**naive** 的，
+    而刚写进去的值是 aware 的——同一个字段在"本次响应"与"下次回读"里会一个带
+    ``+00:00`` 一个不带。客户端按字符串比对就会以为值变了（4.3 的确认幂等用例
+    就是这么撞出来的）。
+    """
+    if value is None:
+        return None
+    return (value if value.tzinfo else value.replace(tzinfo=timezone.utc)).isoformat()
+
+
 class ConsoleBase(DeclarativeBase):
     """控制台/后台面 ORM 基类（console_* 表）。"""
 
 
 class ConsoleIdentityBinding(ConsoleBase):
-    """Logto username ↔ billing Customer 绑定（一客户多身份；一身份一客户）。"""
+    """Logto username ↔ billing Customer 绑定（一客户多身份；一身份一客户）。
+
+    绑定把"某个登录身份"与"某个计费客户"划等号——做错了就是把 A 的账单和权限
+    挂到 B 身上。所以它分两步成立（change converge-line-identity-and-keys 4.3）：
+
+    - **管理员预绑定**先建行，``confirmed_at`` 为空；
+    - **本人首次确认**后才被平台代做采信（``confirmed_at`` 落时间）。
+
+    为什么不能只留一步：管理员能替组织建档（否则成员每次都要等人手工开），但
+    "管理员说这是你"不等于"这是你"——一个填错的 username 就会让别人的动作记到
+    你账上。``confirmed_via`` 记确认通道（``self`` / ``legacy``）；``legacy``
+    只用于本变更之前既有、且已在承载计量的绑定行（见迁移 0005 的回填）。
+    """
 
     __tablename__ = "console_identity_bindings"
 
@@ -47,6 +72,15 @@ class ConsoleIdentityBinding(ConsoleBase):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utcnow
     )
+    #: 本人确认时刻；为空 = 管理员已预绑定、本人尚未确认（不得据此代做）
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    #: 确认通道：`self`（本人在控制台确认过）/ `legacy`（变更前的既有绑定）
+    confirmed_via: Mapped[str | None] = mapped_column(String(32), nullable=True)
+
+    @property
+    def is_confirmed(self) -> bool:
+        """是否已由本人（或历史既有）确认。预绑定行永远为 False。"""
+        return self.confirmed_at is not None
 
     def as_dict(self) -> dict:
         return {
@@ -54,7 +88,10 @@ class ConsoleIdentityBinding(ConsoleBase):
             "customer_id": self.customer_id,
             "identity": self.identity,
             "note": self.note,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "created_at": iso_utc(self.created_at),
+            "confirmed": self.is_confirmed,
+            "confirmed_at": iso_utc(self.confirmed_at),
+            "confirmed_via": self.confirmed_via,
         }
 
 

@@ -23,6 +23,7 @@ from fd_lex_api.billing.routes import router as billing_router
 from fd_lex_api.auth_exchange import router as auth_exchange_router
 from fd_lex_api.config import get_settings
 from fd_lex_api.console_api.consent_routes import router as console_consent_router
+from fd_lex_api.console_api.binding_routes import router as console_binding_router
 from fd_lex_api.console_api.routes import router as console_router
 from fd_lex_api.distribution.routes import router as distribution_router
 from fd_lex_api.esignature import console_router as esignature_console_router
@@ -103,6 +104,8 @@ app.include_router(matter_router)
 app.include_router(auth_exchange_router)
 # 平台代做的授权入口（同 change 2.2）：兑换端点拒绝时指名这里，本模块即那处入口。
 app.include_router(console_consent_router)
+# 本人确认预绑定（同 change 4.3）：管理员建档后，本人来这里点一次确认。
+app.include_router(console_binding_router)
 
 
 def _build_version() -> str:

@@ -62,20 +62,35 @@ def customer_identities(db: Session, customer: Customer) -> list[str]:
     return identities
 
 
-def resolve_console_customer(db: Session, identity: str) -> Customer | None:
-    """登录身份 → 客户：绑定表优先，回落 sub2api_user_id 相等（骨架兼容）。"""
-    binding = db.execute(
+def resolve_console_customer(
+    db: Session, identity: str, *, require_confirmed: bool = False
+) -> Customer | None:
+    """登录身份 → 客户：绑定表优先，回落 sub2api_user_id 相等（骨架兼容）。
+
+    ``require_confirmed=True`` 时**只认已确认的绑定**（4.3）：管理员预绑定但本人
+    尚未确认的行不算数。默认 False——控制台自己看自己的账户不该被这条挡住，
+    否则预绑定一落库，那个人连"去确认"的页面都进不去。真正要求确认的是
+    **平台代做**那条路径（见 ``delegation.authorize_delegation``）。
+    """
+    binding = binding_for(db, identity)
+    if binding is not None:
+        # 有绑定就只认绑定，**不回落** sub2api_user_id 相等——否则确认这一步
+        # 等于绕开了（预绑定不该顺手产生第二把钥匙）。
+        if require_confirmed and not binding.is_confirmed:
+            return None
+        return db.get(Customer, binding.customer_id)
+    return db.execute(
+        select(Customer).where(Customer.sub2api_user_id == identity)
+    ).scalar_one_or_none()
+
+
+def binding_for(db: Session, identity: str) -> ConsoleIdentityBinding | None:
+    """该身份当前的绑定行（没有则 None）。一身份一客户，故取第一行即可。"""
+    return db.execute(
         select(ConsoleIdentityBinding)
         .where(ConsoleIdentityBinding.identity == identity)
         .order_by(ConsoleIdentityBinding.id)
     ).scalars().first()
-    if binding is not None:
-        customer = db.get(Customer, binding.customer_id)
-        if customer is not None:
-            return customer
-    return db.execute(
-        select(Customer).where(Customer.sub2api_user_id == identity)
-    ).scalar_one_or_none()
 
 
 # ---------------------------------------------------------------------------

@@ -82,6 +82,7 @@ def _bearer(authorization: str | None) -> str | None:
 _ENTRY_KINDS = {
     DelegationDenied.CONSENT_REQUIRED: "consent",
     DelegationDenied.BINDING_REQUIRED: "identity-binding",
+    DelegationDenied.CONFIRMATION_REQUIRED: "identity-confirmation",
 }
 
 
@@ -98,6 +99,18 @@ def _entry_point(reason: str, ident: Any) -> dict[str, Any] | None:
             "requires": "以该客户本人身份登录控制台（Logto）",
             # 请求体形状直接给出：调用方不必猜，也不必先读一份文档。
             "request": {"platform_subject": ident.issuer, "scope": " ".join(ident.scope)},
+            "actionable": True,
+        }
+    if kind == "identity-confirmation":
+        # 与"没有绑定"必须分开指路：那个要等管理员建档，这个只要本人点一次。
+        # 指错地方比不指更糟——用户按提示去"申请绑定"会被运营告知已经建好了。
+        return {
+            "kind": "identity-confirmation",
+            "method": "POST",
+            "url": f"{base}/api/console/binding/confirm",
+            "requires": "以本人身份登录控制台（Logto）",
+            # 无请求体：身份只取自登录态，这正是"本人确认"的意义。
+            "request": None,
             "actionable": True,
         }
     # 绑定不是自助动作：把"你是谁"与一个计费客户划等号，做错了就是把 A 的账单

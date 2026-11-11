@@ -24,6 +24,7 @@ from ..billing.plans import QuotaSpec, get_plan, upsert_plan
 from ..billing.quota import quota_status
 from ..billing.sub2api import Sub2ApiClient, Sub2ApiError
 from ..console_api.identity import (
+    binding_for,
     customer_identities,
     period_bounds,
     usage_by_unit,
@@ -217,6 +218,12 @@ def bind_identity(
     customer_id: int = Path(ge=1),
     db: Session = Depends(get_db_session),
 ) -> dict[str, Any]:
+    """单条建档（**也是预绑定**）。
+
+    4.3 之后单条与批量语义一致：管理员建成的是"待本人确认"的行，不是可用绑定。
+    为什么不让单条例外——例外就等于给"零确认"留了一个更好用的入口，而它原本
+    只是"少打一个接口"。返回里带 ``confirmed: false``，让调用方立刻看到还差一步。
+    """
     customer = _customer_or_404(db, customer_id)
     row = ConsoleIdentityBinding(
         customer_id=customer.id, identity=body.identity.strip(), note=body.note
@@ -244,6 +251,93 @@ def unbind_identity(
     db.delete(row)
     db.flush()
     return {"deleted": True, "binding": payload}
+
+
+class BulkBindBody(BaseModel):
+    """组织级预绑定请求体（4.3）。
+
+    **没有** ``customer_id`` 字段：客户来自路径，能替谁建档是权限问题，不是
+    请求体能商量的事。
+    """
+
+    identities: list[str] = Field(min_length=1, max_length=500)
+    note: str | None = Field(default=None, max_length=255)
+
+
+@router.post(
+    "/customers/{customer_id}/identities/bulk", status_code=status.HTTP_201_CREATED
+)
+def bind_identities_bulk(
+    body: BulkBindBody,
+    customer_id: int = Path(ge=1),
+    db: Session = Depends(get_db_session),
+) -> dict[str, Any]:
+    """一次性替组织成员建档（**全部为未确认状态**）。
+
+    为什么逐条报结果而不是整批成功/失败：一次导入几十个 username，撞上一个
+    已属于别家的身份就整批回滚，运营只能一个个试——那等于把批量这件事废掉。
+    所以每条给出稳定状态码，让调用方能重跑、能只补失败的那几条。
+
+    为什么冲突项**不返回对方 customer_id**：这里虽是运营面，但"这个 username
+    属于哪家客户"是不该被顺手抄走的信息；要处理冲突请走单条查询。
+    """
+    customer = _customer_or_404(db, customer_id)
+    seen: list[str] = []
+    for raw in body.identities:
+        ident = (raw or "").strip()
+        if ident and ident not in seen:  # 去重且保序：重复的 username 不该重复计数
+            seen.append(ident)
+
+    results: list[dict[str, Any]] = []
+    for ident in seen:
+        if len(ident) > 255:
+            results.append({"identity": ident[:255], "status": "invalid", "detail": "identity too long"})
+            continue
+        existing = binding_for(db, ident)
+        if existing is None:
+            row = ConsoleIdentityBinding(
+                customer_id=customer.id, identity=ident, note=body.note
+            )
+            try:
+                with db.begin_nested():
+                    db.add(row)
+                    db.flush()
+            except IntegrityError:
+                # 并发下别人刚建了同一身份：按"已存在"报，不把它当成失败。
+                again = binding_for(db, ident)
+                results.append(
+                    {
+                        "identity": ident,
+                        "status": "already_bound" if again and again.customer_id == customer.id else "conflict",
+                    }
+                )
+                continue
+            results.append(
+                {"identity": ident, "status": "created_pending", "binding_id": row.id, "confirmed": False}
+            )
+        elif existing.customer_id == customer.id:
+            results.append(
+                {
+                    "identity": ident,
+                    "status": "already_bound",
+                    "binding_id": existing.id,
+                    "confirmed": existing.is_confirmed,
+                }
+            )
+        else:
+            results.append({"identity": ident, "status": "conflict"})
+
+    summary = {
+        key: sum(1 for r in results if r["status"] == key)
+        for key in ("created_pending", "already_bound", "conflict", "invalid")
+    }
+    return {
+        "customer_id": customer.id,
+        "results": results,
+        "summary": summary,
+        # 预绑定不等于可用：调用方（与运营手册）都该看到这一句。
+        "next": "成员本人登录控制台 POST /api/console/binding/confirm 确认一次后，平台代做才成立",
+    }
 
 
 # ---------------------------------------------------------------------------

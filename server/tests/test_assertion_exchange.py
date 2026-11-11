@@ -147,7 +147,17 @@ def test_forged_signature_is_rejected(keypair):
     token = _token(other_pem)
     with pytest.raises(AssertionRejected) as e:
         verify_assertion(token, settings=_settings(public_pem))
-    assert e.value.reason in (AssertionRejected.BAD_SIGNATURE, AssertionRejected.TOKEN_MALFORMED)
+    # 只认 bad_signature：这一条此前写成 `in (BAD_SIGNATURE, TOKEN_MALFORMED)`，
+    # 等于两种完全不同的失败都算过——原因码指错了也照样绿（2026-11-12 收紧）。
+    assert e.value.reason == AssertionRejected.BAD_SIGNATURE
+
+
+def test_garbage_token_is_malformed_not_bad_signature(keypair):
+    """畸形票与错钥签名必须可分：前者是格式问题，后者是钥问题。"""
+    _private_pem, public_pem = keypair
+    with pytest.raises(AssertionRejected) as e:
+        verify_assertion("not-a-jwt", settings=_settings(public_pem))
+    assert e.value.reason == AssertionRejected.TOKEN_MALFORMED
 
 
 def test_jit_off_rejects_everything(keypair):

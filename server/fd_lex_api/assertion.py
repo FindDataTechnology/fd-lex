@@ -139,6 +139,11 @@ def _decode(
         ) from exc
     except pyjwt.InvalidIssuerError as exc:
         raise AssertionRejected(AssertionRejected.WRONG_ISSUER, f"expected {settings.issuer}") from exc
+    except pyjwt.InvalidSignatureError as exc:
+        # 必须排在 DecodeError 之前：InvalidSignatureError 是 DecodeError 的子类，
+        # 顺序反了会把它报成 token_malformed——原因码指错地方，排查就跑去查"票格式"，
+        # 而真问题是签错了钥（2026-11-12 在门 K 的同款实现里撞出，这里一并修）。
+        raise AssertionRejected(AssertionRejected.BAD_SIGNATURE, type(exc).__name__) from exc
     except pyjwt.DecodeError as exc:
         raise AssertionRejected(AssertionRejected.TOKEN_MALFORMED) from exc
     except Exception as exc:  # 签名不符、算法不符等

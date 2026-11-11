@@ -20,6 +20,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from fd_lex_api.admin_api.routes import router as admin_router
 from fd_lex_api.billing.routes import router as billing_router
+from fd_lex_api.auth_exchange import router as auth_exchange_router
 from fd_lex_api.config import get_settings
 from fd_lex_api.console_api.routes import router as console_router
 from fd_lex_api.distribution.routes import router as distribution_router
@@ -97,6 +98,8 @@ app.include_router(esignature_console_router)
 app.include_router(esignature_signer_router)
 # 案件脊柱（lex-matter-spine）：/api/console/matter 案件的产物登记与证据链
 app.include_router(matter_router)
+# 平台断言兑换（converge-line-identity-and-keys 2.1）：离线验签，返回身份文档。
+app.include_router(auth_exchange_router)
 
 
 def _build_version() -> str:

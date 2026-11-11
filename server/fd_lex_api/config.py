@@ -90,6 +90,18 @@ class Settings(BaseSettings):
     # 签署人 H5 会话有效期（秒）：打开链接后实名/意愿/落签须在该窗口内完成。
     esign_signer_session_ttl_seconds: int = 1800
 
+    # --- 平台断言（converge-line-identity-and-keys 2.1/2.2）------------------
+    # 壹座签的成员级断言：本线离线验签（JWKS 或本地 PEM），不回调平台。
+    # 三项都空 = 未配置 = 兑换端点 fail-closed（503），绝不"没配就放行"。
+    platform_assertion_issuer: str = ""
+    platform_assertion_audience: str = "https://lex.finddatatech.cloud"
+    platform_assertion_jwks_uri: str = ""
+    platform_assertion_public_key_pem: str = ""
+    #: exp-iat 上限（秒）；spec 要求不超过 300。
+    platform_assertion_max_ttl_seconds: int = 300
+    #: off / first-use / consent（缺省 off：不接受任何平台代做）。
+    platform_assertion_jit_policy: str = "off"
+
     # --- 控制台（/console）与运营后台（/admin）面 ---------------------------
     # Logto OIDC：控制台 SPA 走 authorization code + PKCE，服务端只做 ID token
     # 校验（JWKS/iss/aud）与身份读取——不落任何 Logto 客户端密钥。

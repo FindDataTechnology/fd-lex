@@ -69,6 +69,42 @@ def _bearer(authorization: str | None) -> str | None:
     return token or None
 
 
+#: 拒绝时"下一步去哪"。只登记**真的有落点**的两个：
+#: 写一个不存在的地址比不写更糟——调用方跳过去撞 404，会以为自己拿错了凭据。
+#: 授权入口由 ``console_api/consent_routes.py`` 提供（POST 即记一条授权行）。
+_ENTRY_KINDS = {
+    DelegationDenied.CONSENT_REQUIRED: "consent",
+    DelegationDenied.BINDING_REQUIRED: "identity-binding",
+}
+
+
+def _entry_point(reason: str, ident: Any) -> dict[str, Any] | None:
+    kind = _ENTRY_KINDS.get(reason)
+    if kind is None:
+        return None
+    base = (get_settings().console_origin or "").strip().rstrip("/")
+    if kind == "consent":
+        return {
+            "kind": "consent",
+            "method": "POST",
+            "url": f"{base}/api/console/consent",
+            "requires": "以该客户本人身份登录控制台（Logto）",
+            # 请求体形状直接给出：调用方不必猜，也不必先读一份文档。
+            "request": {"platform_subject": ident.issuer, "scope": " ".join(ident.scope)},
+            "actionable": True,
+        }
+    # 绑定不是自助动作：把"你是谁"与一个计费客户划等号，做错了就是把 A 的账单
+    # 和权限挂到 B 身上。这里只给一个能确认当前绑定状态的落点，并如实说不可自助。
+    return {
+        "kind": "identity-binding",
+        "method": None,
+        "url": f"{base}/api/console/me",
+        "requires": "以本人身份登录控制台（Logto）",
+        "actionable": False,
+        "hint": "绑定需由管理员/运营为本人建档；登录后可用该地址确认绑定状态",
+    }
+
+
 @router.post("/exchange")
 def exchange(authorization: str | None = Header(default=None)) -> dict[str, Any]:
     settings = assertion_settings()
@@ -105,7 +141,12 @@ def exchange(authorization: str | None = Header(default=None)) -> dict[str, Any]
                 if exc.reason != DelegationDenied.BINDING_REQUIRED
                 else status.HTTP_409_CONFLICT
             ),
-            detail={"reason": exc.reason, "detail": exc.detail},
+            detail={
+                "reason": exc.reason,
+                "detail": exc.detail,
+                # 拒绝必须可执行：光说"缺授权"而不给地方授权，调用方只能干瞪眼。
+                "entry_point": _entry_point(exc.reason, ident),
+            },
         ) from exc
     finally:
         settings_db.close()

@@ -203,6 +203,34 @@ def main() -> int:
             # 图节点不带 payload（只带 kind/provenance/边），故从落产物时的返回里取
             check((review.get("payload") or {}).get("validation", {}).get("degraded") is True,
                   "评审产物如实带 degraded=true（未伪装成合规）")
+
+            # ── 6.2 逐跳反查：从评审结论往上游走，每跳都要读得通 ──────────────
+            print("④ 6.2 证据链逐跳反查（评审 → 合同/法条 → 上游）…")
+            upstream: dict[str, list[str]] = {}
+            for aid, rid, rel in edges:
+                upstream.setdefault(aid, []).append(rid)
+
+            def walk(node_id: str, depth: int = 0) -> list[str]:
+                node = nodes[node_id]
+                p = node.get("provenance") or {}
+                src = (f"provenance(source={p.get('source')}, stable_id={p.get('stable_id')}, "
+                       f"as_of={p.get('as_of')})") if p else "（非检索类，无 provenance 属合规）"
+                print(f"   {'  ' * depth}→ {node['kind']:<15} {node_id[:8]}  {src}")
+                out = [node_id]
+                for rid in sorted(upstream.get(node_id, [])):
+                    out += walk(rid, depth + 1)
+                return out
+
+            visited = walk(review["id"])
+            broken = [e for e in graph["edges"] if e["broken"]]
+            check(not broken, f"逐跳反查：{len(visited)} 个节点全部可读，无断链")
+            # 反查必须能读回"合同版本"和"法条依据"这两类上游
+            kinds_seen = {nodes[i]["kind"] for i in visited}
+            check({"contract_draft", "statute_hit"} <= kinds_seen,
+                  f"反查读回合同与法条（实际可达 kinds={sorted(kinds_seen)}）")
+            # 合同版本可定位：内容指纹即版本标识
+            check(contract["sha256"] == task["anchor_sha256"],
+                  "合同版本可由 sha256 唯一定位（与签署锚定一致）")
     finally:
         app.dependency_overrides.clear()
         reset_metering_runtime()

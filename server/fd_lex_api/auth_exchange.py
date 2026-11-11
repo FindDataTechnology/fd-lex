@@ -19,6 +19,7 @@ from fastapi import APIRouter, Header, HTTPException, status
 from .assertion import AssertionRejected, AssertionSettings, JitPolicy, verify_assertion
 from .config import get_settings
 from .console_api.delegation import DelegationDenied, authorize_delegation
+from .console_api.replay import DbReplayStore
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -40,10 +41,16 @@ _STATUS = {
 
 
 def _session():
-    """console 面的库会话（console_* 表与 billing 同库）。"""
-    from .metering.db import get_sessionmaker
+    """console 面的库会话（console_* 表与 billing 同库）。
 
-    return get_sessionmaker()()
+    用 ``metering.db.get_session``——与 ``/api/console/*`` 走的是同一个会话工厂。
+    这里曾写成 ``get_sessionmaker()()``（该名字在 metering.db 里并不存在）：
+    单测只覆盖了"未配置 503"与"缺 bearer 400"两条，都在这一行之前就返回，
+    于是真机一调就 ImportError 500。见 tests 里那条端到端用例。
+    """
+    from .metering.db import get_session
+
+    return get_session()
 
 
 def assertion_settings() -> AssertionSettings:
@@ -114,9 +121,18 @@ def exchange(authorization: str | None = Header(default=None)) -> dict[str, Any]
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="missing bearer assertion",
         )
+    settings_db = None
     try:
-        ident = verify_assertion(token, settings=settings)
+        # jti 一次性必须在这里接上：`verify_assertion` 只在给了 replay 台账时才查
+        # 重放，不传就等于这条验收（任务 2.1「jti 一次性」）只是文档里的一句话。
+        # 台账落库（不是进程内），否则多副本间各自为政，重放换副本即可通过。
+        settings_db = _session()
+        ident = verify_assertion(
+            token, settings=settings, replay=DbReplayStore(settings_db)
+        )
     except AssertionRejected as exc:
+        if settings_db is not None:
+            settings_db.close()
         raise HTTPException(
             status_code=_STATUS.get(exc.reason, status.HTTP_401_UNAUTHORIZED),
             detail={"reason": exc.reason, "detail": exc.detail},
@@ -125,7 +141,6 @@ def exchange(authorization: str | None = Header(default=None)) -> dict[str, Any]
             ) else None,
         ) from exc
     # 验签只回答"这份断言是真的"；下面回答"这个平台被允许代这个人做什么"。
-    settings_db = _session()
     try:
         decision = authorize_delegation(
             settings_db,

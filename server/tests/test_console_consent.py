@@ -269,3 +269,71 @@ def test_exchange_refusal_names_the_consent_entry_point(env, monkeypatch):
     assert binding["url"].endswith("/api/console/me")
 
     assert _entry_point(DelegationDenied.JIT_DISABLED, ident) is None, "off 档没有下一步可走"
+
+
+# ── 端到端：真签一份断言打到真端点（补上此前没覆盖的库会话接缝） ────────────
+
+
+def test_exchange_end_to_end_with_real_assertion(env, monkeypatch):
+    """绑定 + first-use 档下，一份真签的 RS256 断言应换回身份文档。
+
+    这条存在的理由很具体：`_session()` 曾导入一个不存在的 `get_sessionmaker`，
+    而当时所有兑换端点测试都停在"未配置 503 / 缺 bearer 400"——根本走不到那行，
+    于是单测全绿、真机一调即 500。只要这条在，那个接缝就不可能再静默。
+    """
+    import time
+
+    import jwt as pyjwt
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import rsa
+
+    from fd_lex_api.config import reset_settings
+
+    client, engine = env
+    customer_id = _bind(engine)
+
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    private_pem = key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption(),
+    ).decode()
+    public_pem = key.public_key().public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    ).decode()
+
+    monkeypatch.setenv("PLATFORM_ASSERTION_ISSUER", PLATFORM)
+    monkeypatch.setenv("PLATFORM_ASSERTION_AUDIENCE", "https://lex.example.test")
+    monkeypatch.setenv("PLATFORM_ASSERTION_PUBLIC_KEY_PEM", public_pem)
+    monkeypatch.setenv("PLATFORM_ASSERTION_JIT_POLICY", "first-use")
+    reset_settings()
+
+    now = int(time.time())
+    token = pyjwt.encode(
+        {
+            "iss": PLATFORM,
+            "sub": IDENTITY,
+            "aud": "https://lex.example.test",
+            "iat": now,
+            "exp": now + 120,
+            "jti": "e2e-once",
+            "scope": "line:read",
+        },
+        private_pem,
+        algorithm="RS256",
+    )
+
+    resp = client.post("/api/auth/exchange", headers={"authorization": f"Bearer {token}"})
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["sub"] == IDENTITY
+    assert body["customer_id"] == customer_id, "绑定解析必须落到真客户上"
+    assert body["scope"] == ["line:read"]
+    assert body["audience"] == "https://lex.example.test"
+    assert body["consent_id"] is None, "first-use 档不产生授权行"
+
+    # 同一个 jti 再来一次 → 重放要拒（不是 200 也不是 500）
+    again = client.post("/api/auth/exchange", headers={"authorization": f"Bearer {token}"})
+    assert again.status_code == 409, again.text
+    assert again.json()["detail"]["reason"] == "replayed"

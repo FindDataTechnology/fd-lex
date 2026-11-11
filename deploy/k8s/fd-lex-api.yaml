@@ -35,7 +35,7 @@ spec:
       # 依赖 create_all（生产 METERING_AUTO_CREATE_TABLES=false）。
       initContainers:
         - name: migrate
-          image: ccr.ccs.tencentyun.com/finddata-business/fd-lex-api:sha-9183f74
+          image: ccr.ccs.tencentyun.com/finddata-business/fd-lex-api:sha-375354d
           imagePullPolicy: IfNotPresent
           command: ["alembic", "upgrade", "head"]
           envFrom:
@@ -46,7 +46,7 @@ spec:
             limits: { cpu: 100m, memory: 128Mi }
       containers:
         - name: api
-          image: ccr.ccs.tencentyun.com/finddata-business/fd-lex-api:sha-9183f74
+          image: ccr.ccs.tencentyun.com/finddata-business/fd-lex-api:sha-375354d # ｜2026-11-11 sha-375354d：门 A 线侧落地（change converge-line-identity-and-keys 2.1/2.2）——断言兑换 /api/auth/exchange（离线验签、jti 落库一次性、TTL≤300s）+ 三档 JIT 判定 + 授权自助入口 /api/console/consent + 0004_line_identity 迁移（initContainer 自动 upgrade head）；默认 fail-closed（未配 PLATFORM_ASSERTION_* 一律 503、jit_policy 缺省 off）。源真 d323213，快照 375354d；回滚=上一 tag sha-9183f74。
           imagePullPolicy: IfNotPresent
           ports:
             - name: http

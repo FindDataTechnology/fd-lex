@@ -90,6 +90,66 @@ class ConsoleCredentialEvent(ConsoleBase):
         }
 
 
+class ConsolePlatformConsent(ConsoleBase):
+    """平台服务主体代某客户的授权行（converge-line-identity-and-keys 2.2）。
+
+    ``consent`` 档下，绑定存在还不够：平台要代该客户做事，必须有一条**显式、
+    可审计、可撤销**的授权行。撤销用 ``revoked_at`` 留痕——删行会让"曾经授权过"
+    这件事消失，而审计要看的正是这个。
+    """
+
+    __tablename__ = "console_platform_consents"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    #: 软引用 billing_customers.id（同 ConsoleIdentityBinding，不建 FK）
+    customer_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    #: 被信任的平台服务主体（断言的 iss 或 iss+sub 组合）
+    platform_subject: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    #: 授予的 scope（空格分隔；与断言 scope 取交集，不放大权限）
+    scope: Mapped[str] = mapped_column(String(512), nullable=False, default="")
+    #: 谁会话/哪条链路授权了它（审计起点）
+    granted_by: Mapped[str | None] = mapped_column(String(255))
+    granted_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow
+    )
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    def as_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "customer_id": self.customer_id,
+            "platform_subject": self.platform_subject,
+            "scope": self.scope,
+            "granted_by": self.granted_by,
+            "granted_at": self.granted_at.isoformat() if self.granted_at else None,
+            "revoked_at": self.revoked_at.isoformat() if self.revoked_at else None,
+            "active": self.revoked_at is None,
+        }
+
+
+class ConsoleAssertionReplay(ConsoleBase):
+    """平台断言的 jti 一次性台账（converge-line-identity-and-keys 2.1）。
+
+    "jti 一次性"是兑换端点的验收原文。**落库而不是放进程内**：进程内台账在多副本
+    部署下形同虚设——同一份断言打到另一个副本照样通过，而"重放"这件事恰恰是
+    攻击者会主动挑副本的。唯一约束让"谁先写入谁赢"由数据库裁决，不靠应用层判等。
+
+    行只活到断言自身的 ``exp``：过期的行不再有保护价值，清理时按 ``expires_at``
+    删（见 ``replay.DbReplayStore.claim``）。
+    """
+
+    __tablename__ = "console_assertion_replays"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    #: 断言的 jti（全局唯一：同一个 jti 只允许被认领一次）
+    jti: Mapped[str] = mapped_column(String(128), nullable=False, unique=True, index=True)
+    #: 断言自身的到期时刻（epoch 秒）；过此即无效，可清理
+    expires_at: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow
+    )
+
+
 def _load_groups(raw: str | None) -> list[str]:
     if not raw:
         return []
@@ -114,9 +174,11 @@ def ensure_console_schema(engine=None) -> None:
 __all__ = [
     "CREDENTIAL_ACTION_MINT",
     "CREDENTIAL_ACTION_REVOKE",
+    "ConsoleAssertionReplay",
     "ConsoleBase",
     "ConsoleCredentialEvent",
     "ConsoleIdentityBinding",
+    "ConsolePlatformConsent",
     "ensure_console_schema",
     "utcnow",
 ]

@@ -102,6 +102,18 @@ class Settings(BaseSettings):
     #: off / first-use / consent（缺省 off：不接受任何平台代做）。
     platform_assertion_jit_policy: str = "off"
 
+    # --- 门 K 换发令牌（converge-line-identity-and-keys 7.2 / 8.2）----------
+    # 网关把客户的词元 sk- 换成一枚 aud=本线、带 source、≤600s 的 JWT，本线
+    # **离线**验签（不回调网关、不逐请求问计费）。公钥/JWKS 都空 = 未配置 =
+    # 门 K 那条路 fail-closed（401），既有 Logto / PAT 路径一个字节不变。
+    line_token_issuer: str = ""
+    #: 本线 slug；令牌的 aud 与 source 都必须等于它（跨线复用票在这里被拒）。
+    line_token_line: str = "lex"
+    line_token_jwks_uri: str = ""
+    line_token_public_key_pem: str = ""
+    #: exp-iat 上限（秒）；网关侧同样夹 600，两边各守一次。
+    line_token_max_ttl_seconds: int = 600
+
     # --- 控制台（/console）与运营后台（/admin）面 ---------------------------
     # Logto OIDC：控制台 SPA 走 authorization code + PKCE，服务端只做 ID token
     # 校验（JWKS/iss/aud）与身份读取——不落任何 Logto 客户端密钥。

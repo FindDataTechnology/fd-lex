@@ -18,6 +18,7 @@ from fd_lex_api.billing import Customer, LedgerEntry, Plan, PlanQuota
 from fd_lex_api.billing.deps import get_sub2api_client
 from fd_lex_api.config import reset_settings
 from fd_lex_api.console_api.auth import ConsoleUser, require_console_user
+from fd_lex_api.console_api.line_auth import require_console_or_line
 from fd_lex_api.console_api.models import (
     ConsoleBase,
     ConsoleCredentialEvent,
@@ -124,7 +125,7 @@ def console_env(monkeypatch, tmp_path):
     fake_sub2api.add_user("8tajhoprelg0", balance_micro=50_000_000)
     fake_registry = FakeRegistry()
 
-    app.dependency_overrides[require_console_user] = lambda: USER
+    app.dependency_overrides[require_console_or_line] = lambda: USER
     app.dependency_overrides[get_registry_client] = lambda: fake_registry
     app.dependency_overrides[get_sub2api_client] = lambda: fake_sub2api.client()
     try:
@@ -229,7 +230,7 @@ def test_auth_config_reports_missing_when_unconfigured(console_env, monkeypatch)
 
 def test_console_endpoints_require_bearer(console_env) -> None:
     """无 overrides 时：无 Bearer 401；带无效 token 401（真校验路径）。"""
-    app.dependency_overrides.pop(require_console_user, None)
+    app.dependency_overrides.pop(require_console_or_line, None)
     client, _, _, _ = console_env
     assert client.get("/api/console/me").status_code == 401
     assert (

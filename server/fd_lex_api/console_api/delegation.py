@@ -27,7 +27,13 @@ from ..billing.models import Customer
 from .identity import binding_for, resolve_console_customer
 from .models import ConsolePlatformConsent
 
-__all__ = ["DelegationDecision", "DelegationDenied", "authorize_delegation", "grant_consent"]
+__all__ = [
+    "DelegationDecision",
+    "DelegationDenied",
+    "active_consent",
+    "authorize_delegation",
+    "grant_consent",
+]
 
 #: 该身份没有任何绑定行
 BINDING_REQUIRED = "binding_required"
@@ -58,7 +64,8 @@ class DelegationDecision:
     consent_id: int | None
 
 
-def _active_consent(db: Session, customer_id: int, platform_subject: str) -> ConsolePlatformConsent | None:
+def active_consent(db: Session, customer_id: int, platform_subject: str) -> ConsolePlatformConsent | None:
+    """该（客户, 平台主体）当前生效的授权行；无则 None。"""
     return db.execute(
         select(ConsolePlatformConsent)
         .where(ConsolePlatformConsent.customer_id == customer_id)
@@ -106,7 +113,7 @@ def authorize_delegation(
     if jit_policy != "consent":
         raise DelegationDenied(DelegationDenied.JIT_DISABLED, f"unknown jit_policy {jit_policy!r}")
 
-    consent = _active_consent(db, customer.id, platform_subject)
+    consent = active_consent(db, customer.id, platform_subject)
     if consent is None:
         raise DelegationDenied(
             DelegationDenied.CONSENT_REQUIRED,

@@ -36,7 +36,8 @@ from ..billing.quota import quota_status
 from ..billing.sub2api import Sub2ApiClient
 from ..config import get_settings
 from ..metering.models import UNITS
-from .auth import ConsoleUser, require_console_user
+from .auth import ConsoleUser
+from .line_auth import ensure_credential_admin_allowed, require_console_or_line
 from .identity import (
     bindings_for_identity,
     customer_identities,
@@ -118,7 +119,7 @@ def _bound_customer(db: Session, user: ConsoleUser) -> tuple[Customer | None, li
 
 @router.get("/me")
 def me(
-    user: ConsoleUser = Depends(require_console_user),
+    user: ConsoleUser = Depends(require_console_or_line),
     db: Session = Depends(get_db_session),
 ) -> dict[str, Any]:
     """当前登录身份、客户绑定与后台角色判定。"""
@@ -147,7 +148,7 @@ def me(
 @router.get("/usage")
 def usage(
     period: str = Query(..., min_length=7, max_length=7),
-    user: ConsoleUser = Depends(require_console_user),
+    user: ConsoleUser = Depends(require_console_or_line),
     db: Session = Depends(get_db_session),
 ) -> dict[str, Any]:
     """本客户（含绑定身份）周期用量：合计 + 按单位/工具明细 + 最近调用。"""
@@ -192,7 +193,7 @@ def _entry_dict(entry: LedgerEntry) -> dict[str, Any]:
 @router.get("/billing")
 def billing(
     period: str = Query(..., min_length=7, max_length=7),
-    user: ConsoleUser = Depends(require_console_user),
+    user: ConsoleUser = Depends(require_console_or_line),
     db: Session = Depends(get_db_session),
 ) -> dict[str, Any]:
     """本客户周期账本流水；未开户/未绑定返回 customer=null 的真实空态。"""
@@ -230,7 +231,7 @@ def billing(
 @router.get("/quota")
 def quota(
     period: str = Query(..., min_length=7, max_length=7),
-    user: ConsoleUser = Depends(require_console_user),
+    user: ConsoleUser = Depends(require_console_or_line),
     db: Session = Depends(get_db_session),
     sub2api: Sub2ApiClient = Depends(get_sub2api_client),
 ) -> dict[str, Any]:
@@ -330,7 +331,7 @@ def _record_event(
 @router.get("/credentials")
 def list_credentials(
     request: Request,
-    user: ConsoleUser = Depends(require_console_user),
+    user: ConsoleUser = Depends(require_console_or_line),
     registry: RegistryPatchKeyClient = Depends(get_registry_client),
 ) -> JSONResponse:
     """列出当前客户在 registry 的凭据（元数据；明文/哈希不返回）。"""
@@ -347,11 +348,18 @@ def list_credentials(
 def mint_credential(
     body: MintBody,
     request: Request,
-    user: ConsoleUser = Depends(require_console_user),
+    user: ConsoleUser = Depends(require_console_or_line),
     db: Session = Depends(get_db_session),
     registry: RegistryPatchKeyClient = Depends(get_registry_client),
 ) -> JSONResponse:
-    """铸造长命凭据（不设过期）；明文仅在本次响应中出现一次。"""
+    """铸造长命凭据（不设过期）；明文仅在本次响应中出现一次。
+
+    门 K 换发令牌（客户级、短命）**不能**用来铸一把更长命的钥匙——那等于把短命
+    约束绕开。所以经由那条路来的人必须具备 `line:admin` 且有一条生效的 consent
+    行（converge-line-identity-and-keys 8.2）。人（Logto）这条既有路径不变，
+    上游 registry 仍按 owner-only 判定。
+    """
+    ensure_credential_admin_allowed(db, user)
     try:
         status_code, payload = registry.mint_key(_registry_token(request), body.name)
     except RegistryUnavailable as exc:
@@ -387,11 +395,16 @@ def mint_credential(
 def revoke_credential(
     request: Request,
     key_id: str = Path(min_length=1, max_length=128),
-    user: ConsoleUser = Depends(require_console_user),
+    user: ConsoleUser = Depends(require_console_or_line),
     db: Session = Depends(get_db_session),
     registry: RegistryPatchKeyClient = Depends(get_registry_client),
 ) -> JSONResponse:
-    """吊销凭据（不可逆；registry 侧即时生效，下一次调用 401）。"""
+    """吊销凭据（不可逆；registry 侧即时生效，下一次调用 401）。
+
+    spec 把「铸造或吊销钥匙」同列为管理动作，所以门 K 那条路要求同样的
+    `line:admin` + consent 行（8.2）；人（Logto）这条既有路径不变。
+    """
+    ensure_credential_admin_allowed(db, user)
     try:
         status_code, payload = registry.revoke_key(_registry_token(request), key_id)
     except RegistryUnavailable as exc:
@@ -425,7 +438,7 @@ def revoke_credential(
 @router.get("/credentials/events")
 def credential_events(
     limit: int = Query(default=50, ge=1, le=200),
-    user: ConsoleUser = Depends(require_console_user),
+    user: ConsoleUser = Depends(require_console_or_line),
     db: Session = Depends(get_db_session),
 ) -> dict[str, Any]:
     """本客户经 lex 控制台发生的凭据操作留痕（审计视图；实时列表以 registry 为准）。"""

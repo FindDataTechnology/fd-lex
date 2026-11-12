@@ -28,6 +28,9 @@
 | `ADMIN_ROLES` | 后台 Logto 角色名（默认 `lex-admin`；未在 Logto 建角色则只能走 X-Admin-Token） |
 | `REGISTRY_BASE_URL` | 凭据代理目标（默认 `https://mcp.finddatatech.cloud`） |
 | `CONSOLE_ORIGIN` | `https://lex.finddatatech.cloud`（回跳提示；不参与鉴权判定） |
+| `LINE_TOKEN_ISSUER` | 门 K（change converge-line-identity-and-keys 7.2）：线票签发方 `https://mcp.finddatatech.cloud`。**三个 `LINE_TOKEN_*` 缺任一个 = 这条路自动关闭**，只认 Logto、错凭据仍回原来那条 401（与接入前逐字节一致） |
+| `LINE_TOKEN_LINE` | 门 K：本线名 `lex`——令牌的 `aud` 与 `source` 都必须等于它，别的线换来的票一律不认 |
+| `LINE_TOKEN_PUBLIC_KEY_PEM` | 门 K：平台换票用的 ES256 **公钥**。私钥只留平台侧（Secret `line-signing-keys` 的 `LINE_EXCHANGE_KEY_LEX`，含 `LINE_EXCHANGE_KID_LEX`）；轮换=新 `kid` + 新公钥上线，旧票自然过期后下线旧钥 |
 | `ESIGN_FILE_STORE_DIR` | 电子签文件仓（默认 `./esign_files`；生产=`/data/esign` → PVC `lex-esign-files`）。合同全文只落客户侧，**卷必须纳入备份** |
 | `ESIGN_SIGNER_SESSION_TTL_SECONDS` | 签署人 H5 会话有效期（默认 1800s） |
 | `ESIGN_PROVIDER` | 签署腿适配器（**未设即 fail-closed**：发起如实报「签署腿未配置」；`stub` 仅开发/测试；厂商值待选型 spike 通过后接入，见 `docs/ESIGN-PROVIDER-ONBOARDING.md`） |

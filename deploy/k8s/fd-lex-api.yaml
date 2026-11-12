@@ -35,7 +35,7 @@ spec:
       # 依赖 create_all（生产 METERING_AUTO_CREATE_TABLES=false）。
       initContainers:
         - name: migrate
-          image: ccr.ccs.tencentyun.com/finddata-business/fd-lex-api:sha-8d93ee1
+          image: ccr.ccs.tencentyun.com/finddata-business/fd-lex-api:sha-8d5a936
           imagePullPolicy: IfNotPresent
           command: ["alembic", "upgrade", "head"]
           envFrom:
@@ -46,7 +46,8 @@ spec:
             limits: { cpu: 100m, memory: 128Mi }
       containers:
         - name: api
-          image: ccr.ccs.tencentyun.com/finddata-business/fd-lex-api:sha-8d93ee1 # ｜2026-11-11 sha-8d93ee1：组织级预绑定 + 本人确认（change converge-line-identity-and-keys 4.3）——绑定拆两步：管理员单条/批量建档均为**未确认**行，本人 POST /api/console/binding/confirm 后才被平台代做采信；未确认时兑换端拒 `confirmation_required` 并给可执行入口（与 `binding_required` 分开，前者本人点一次、后者要管理员建档）；0005_binding_confirmation 迁移（initContainer 自动 upgrade head，既有行回填 confirmed_via=legacy 以免线上客户丢可见性）。源真 23158b8，快照 8d93ee1；ccr digest sha256:fdeccd79（skopeo 实证两端一致）；回滚=sha-375354d。
+          image: ccr.ccs.tencentyun.com/finddata-business/fd-lex-api:sha-8d5a936 # ｜2026-11-12 sha-8d5a936：门 K 顾客轨线侧落地（change converge-line-identity-and-keys 7.2/7.3/8.2）——离线 JWKS/公钥验签的短命线票（aud/source 必须等于本线、TTL≤600s、jti 落库一次性）、计量把门 K 直连调用记在同一张表（一次调用一条、换票零条）、控制台改走 `require_console_or_line`（先 Logto 再门 K，两条都失败**回抛原 Logto 401**；铸造/吊销另加 `line:admin` + 生效 consent 双闸）。未配置 `LINE_TOKEN_*` 时行为与上一片逐字节一致。源真 b562548，快照 8d5a936；回滚=sha-8d93ee1。
+            # ｜2026-11-11 sha-8d93ee1：组织级预绑定 + 本人确认（change converge-line-identity-and-keys 4.3）——绑定拆两步：管理员单条/批量建档均为**未确认**行，本人 POST /api/console/binding/confirm 后才被平台代做采信；未确认时兑换端拒 `confirmation_required` 并给可执行入口（与 `binding_required` 分开，前者本人点一次、后者要管理员建档）；0005_binding_confirmation 迁移（initContainer 自动 upgrade head，既有行回填 confirmed_via=legacy 以免线上客户丢可见性）。源真 23158b8，快照 8d93ee1；ccr digest sha256:fdeccd79（skopeo 实证两端一致）；回滚=sha-375354d。
             # ｜2026-11-11 sha-375354d：门 A 线侧落地（change converge-line-identity-and-keys 2.1/2.2）——断言兑换 /api/auth/exchange（离线验签、jti 落库一次性、TTL≤300s）+ 三档 JIT 判定 + 授权自助入口 /api/console/consent + 0004_line_identity 迁移（initContainer 自动 upgrade head）；默认 fail-closed（未配 PLATFORM_ASSERTION_* 一律 503、jit_policy 缺省 off）。源真 d323213，快照 375354d；回滚=上一 tag sha-9183f74。
           imagePullPolicy: IfNotPresent
           ports:

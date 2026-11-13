@@ -31,6 +31,13 @@ HOSTS = {
 SKIP_SUFFIX = {".test.ts", ".test.tsx", ".map"}
 SKIP_DIRS = {"node_modules", "__pycache__", ".git"}
 
+# 操作系统/编辑器垃圾：不是源文件，不该要求副本同步一份。
+# 2026-11-13 实历：源 fd-lex/web-kit/ 被 Finder 浏览后留下 .DS_Store，副本没有它，
+# 于是漂移门长期报「fd-lex/fd-shilun/fd-zhesi: 缺文件 .DS_Store」——修法写着「改源后
+# 跑 sync_web_kit.py」，可真按它做等于把 Finder 垃圾当源文件分发。常年红的门等于没有门，
+# 故在枚举层忽略（不是靠 .gitignore——这些文件本就不被跟踪，门看的是磁盘）。
+SKIP_NAMES = {".DS_Store", "Thumbs.db", "desktop.ini"}
+
 
 def collect(root: Path) -> dict[str, Path]:
     out: dict[str, Path] = {}
@@ -38,6 +45,8 @@ def collect(root: Path) -> dict[str, Path]:
         return out
     for path in sorted(root.rglob("*")):
         if not path.is_file():
+            continue
+        if path.name in SKIP_NAMES:
             continue
         if any(part in SKIP_DIRS for part in path.parts):
             continue

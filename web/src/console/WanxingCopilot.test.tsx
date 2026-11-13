@@ -13,8 +13,7 @@ import { MemoryRouter, useLocation } from 'react-router-dom'
 
 import { CONSOLE_TABS } from './ConsoleLayout'
 import { WanxingCopilot } from './WanxingCopilot'
-
-const WANXING_ORIGIN = 'https://wanxing.finddatatech.cloud'
+import { WANXING_ORIGIN } from './config'
 
 type CopilotApi = {
   identify?: () => { token: string | null }
@@ -33,6 +32,7 @@ afterEach(() => {
   delete (window as unknown as { WanxingCopilot?: CopilotApi }).WanxingCopilot
   document.head.querySelectorAll('script[data-line="lex"]').forEach((s) => s.remove())
   vi.restoreAllMocks()
+  vi.unstubAllEnvs()
 })
 
 function mountCopilot() {
@@ -61,6 +61,18 @@ function mountCopilot() {
 }
 
 describe('WanxingCopilot 宿主钩子（协议在 loader 里）', () => {
+  it('未配置时的默认地址与独立前的生产地址逐字一致', () => {
+    expect(WANXING_ORIGIN).toBe('https://wanxing.finddatatech.cloud')
+  })
+
+  it('构建期 VITE_WANXING_ORIGIN 覆盖默认地址', async () => {
+    vi.stubEnv('VITE_WANXING_ORIGIN', 'https://wanxing.example.test/')
+    vi.resetModules()
+    const mod = await import('./config')
+    // 末尾斜杠被剥掉，loader 路径不会拼出 //copilot.js
+    expect(mod.WANXING_ORIGIN).toBe('https://wanxing.example.test')
+  })
+
   it('按线注入 loader 脚本，且不自己渲染 iframe', () => {
     const { script } = mountCopilot()
     expect(script).toBeTruthy()

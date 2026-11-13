@@ -84,3 +84,23 @@
 2. **对外数字只能出自 `collateral/numbers.md`**；废止值（旧法规部数、旧文书篇数）不得再出现在对外文案。
 3. **未交付的不承诺**：孵化成员的卡片不出现价格、试用、SLA、上线时间；未交付能力不出现"随交付包"类表述。
 4. **改口径的顺序**：真源 → 投影 → 跑门。反过来一定漂。
+
+### 发布前必跑 / Before shipping
+
+这几道门**互不包含**，跑一道不等于跑了别的——2026-11-13 的哲思「可私有化部署」正是漏跑第一道才活到线上的：
+
+```bash
+# ① 条线一致性（真源 ↔ 四层投影，含官网成员卡正文与交付档位）—— 不联网、只读
+python3 fd-lex/scripts/check_product_lineup.py --strict
+
+# ② 家族哨兵（壳漂移 / 两语键位 / 字面量 / 五宿主 vitest），加 --with-deploy 再核线上 bundle
+python3 fd-lex/scripts/run_family_gates.py --with-deploy
+
+# ③ 三站线上 bundle == 本地构建（联网；① 判产物，③ 判产物真的在线上）
+python3 fd-lex/scripts/check_web_deploy.py
+```
+
+判据分工：`check_product_lineup.py` 判「**该说什么**」（A0–A9，十类断言）；`check_web_deploy.py` 判「**说的那份在不在线上**」。两者都绿才叫上产。
+
+另记一条官网发布面的坑：`www.finddatatech.cloud` 的在役发布线是 cheap1 的 `/opt/fd/fd-web-deploy.sh`（静态 `dist`），**不是** tencent 集群里那个 `fd-web/official-web` Deployment——改后者的 tag 不会改变线上页面。
+

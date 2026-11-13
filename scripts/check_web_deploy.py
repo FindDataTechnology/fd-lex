@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
 """线上 web 部署一致性核验（change lex-web-shell-convergence 收尾后的常备闸）。
 
-取代"人工打开三个站看一眼"里**机器能判死**的那部分。判据链：
+取代"人工打开五个站看一眼"里**机器能判死**的那部分。判据链：
   ① 部署清单里的 image tag（清单 = git 里的期望）
   ② 站点 HTML 200，且引用的 bundle 名与**本地当前构建产物**逐字符一致
      （bundle 名是内容哈希，一致 ⇒ 线上跑的确实是这份构建）
   ③ 线上 bundle 内容里含原语标记（`data-tone`），证明原语进了产物而非被树摇掉
+     ——**只对有 `web/src/kit` 副本的宿主成立**。剧创/政心没有壳副本（它们是独立 SPA），
+     按 `marker=False` 跳过这一条，否则会拿一条不适用的判据常年报红。
   ④ 站点返回的 HTML 里没有裸露的 i18n key（`workbench.` 之类）——文案缺失会以裸键形式露出
 
 为什么 bundle 名比对是强判据：Vite 的 `index-<hash>.js` 由内容决定，任一字节变化都会换名。
 所以"名字相同"= 部署的就是本地这一份，不需要读线上 JS 再逐字符 diff。
 
 用法：
-    python3 fd-lex/scripts/check_web_deploy.py                # 三个站全查
+    python3 fd-lex/scripts/check_web_deploy.py                # 五个站全查
     python3 fd-lex/scripts/check_web_deploy.py --host fd-lex  # 只查一个
     python3 fd-lex/scripts/check_web_deploy.py --expect fd-lex=index-XXXX.js  # 负例：喂错期望必须红
 
@@ -37,22 +39,47 @@ ROOT = Path(__file__).resolve().parents[2]
 # 清单路径分属两个仓（fd-lex 自己的 k8s 清单、fd-infra-deploy 的 all-services），故显式登记。
 SITES = {
     "fd-lex": {
+        "marker": True,
         "url": "https://lex.finddatatech.cloud",
         "manifest": ROOT / "fd-lex" / "deploy" / "k8s" / "fd-lex-web.yaml",
         "dist": ROOT / "fd-lex" / "web" / "dist",
         "image": "fd-lex-web",
     },
     "fd-shilun": {
+        "marker": True,
         "url": "https://shilun.finddatatech.cloud",
         "manifest": ROOT / "fd-infra-deploy" / "all-services" / "prod" / "fd-shilun-web.yaml",
         "dist": ROOT / "fd-shilun" / "web" / "dist",
         "image": "fd-shilun-web",
     },
     "fd-zhesi": {
+        "marker": True,
         "url": "https://zhesi.finddatatech.cloud",
         "manifest": ROOT / "fd-infra-deploy" / "all-services" / "prod" / "fd-zhesi-web.yaml",
         "dist": ROOT / "fd-zhesi" / "web" / "dist",
         "image": "fd-zhesi-web",
+    },
+    # 2026-11-14 补齐：家族五成员，覆盖就必须是五个。原先只登记三站，
+    # 剧创与政心的线上产物没有任何东西在看——而 run_family_gates.py 的 HOSTS
+    # 注释自己写着「少一处就等于该宿主的漂移无人看见」，这两站就是那种形态。
+    "fd-juchuang": {
+        "marker": False,  # 无 web/src/kit：不是壳宿主，data-tone 判据不适用
+        # 已知红（2026-11-14 线上核实）：线上镜像 sha-7f984f3 建于 2026-10-21T03:14Z，
+        # 而 web 源码在 10-22 的 93fbdac「连续性层」之后未出片（11k 行，同时改 server/：
+        # fountain/ledger/quality 三个模块，web 的 QualityPanel 调它们的端点）。
+        # 解除条件：web + api 同版出片（单出 web 会让工作台调不到新端点）。这不是判据问题。
+        "hint": "线上建于 2026-10-21，源码 10-22 的「连续性层」未出片；需 web+api 同版发布",
+        "url": "https://juchuang.finddatatech.cloud",
+        "manifest": ROOT / "fd-infra-deploy" / "all-services" / "prod" / "fd-juchuang-web.yaml",
+        "dist": ROOT / "fd-juchuang" / "web" / "dist",
+        "image": "fd-juchuang-web",
+    },
+    "fd-zhengxin": {
+        "marker": False,  # 无 web/src/kit：不是壳宿主，data-tone 判据不适用
+        "url": "https://zhengxin.finddatatech.cloud",
+        "manifest": ROOT / "fd-infra-deploy" / "all-services" / "prod" / "fd-zhengxin-web.yaml",
+        "dist": ROOT / "fd-zhengxin" / "web" / "dist",
+        "image": "fd-zhengxin-web",
     },
 }
 
@@ -138,11 +165,14 @@ def main() -> int:
         if not live:
             problems.append(f"{host}: HTML 里没有 /assets/index-*.js")
         elif expect and live != expect:
-            problems.append(f"{host}: 线上 bundle {live} ≠ 期望 {expect}（部署的不是这份构建）")
+            msg = f"{host}: 线上 bundle {live} ≠ 期望 {expect}（部署的不是这份构建）"
+            if spec.get("hint"):
+                msg += f"；{spec['hint']}"
+            problems.append(msg)
 
         if not args.skip_bundle_body and live:
             _, body = fetch(f"{spec['url']}/assets/{live}")
-            if PRIMITIVE_MARKER not in body:
+            if spec.get("marker", True) and PRIMITIVE_MARKER not in body:
                 problems.append(f"{host}: 线上 bundle 里没有 {PRIMITIVE_MARKER}（原语可能被树摇）")
             if len(body) < 10_000:
                 problems.append(f"{host}: bundle 只取到 {len(body)} 字节，疑似抓取失败")

@@ -5,7 +5,7 @@
 本脚本把它变成一个命令，避免"我记得改过"。
 
 真源：`fd-lex/docs/product-lineup.json`（四张表：members / capabilities / suites / tiers）。
-投影与断言（八类 A0-A7，逐条可独立注入为红）：
+投影与断言（九类 A0-A8，逐条可独立注入为红）：
 
   A0 真源结构   —— 四张表齐全、id 唯一、枚举合法（availability / segment / host 词表）
   A1 站点目录   —— 两语 `capabilities.items` 的键集 == 真源行集，且每行宿主徽标与真源一致
@@ -14,6 +14,8 @@
   A4 禁用承诺   —— 未交付行不得出现「随交付包 / 随包提供 / 交付适配器」类承诺（含否定词判定）
   A5 数字白名单 —— 对外文案里的法律数字必须能在 `collateral/numbers.md` 找到登记值
   A6 宿主一致性 —— 预览行不得标成可用、仅私有化行不得标成双宿主；站点声明 canonical
+  A7 人读矩阵   —— PRODUCT-LINEUP.md 的能力行与真源双向一致
+  A8 成员交付主张 —— incubation 成员的官网卡片正文不得宣称私有化部署/交付包等交付形态
 
 用法：
     python3 fd-lex/scripts/check_product_lineup.py                 # 全部（缺失路径记 SKIP）
@@ -51,6 +53,30 @@ METERING_VOCAB = {
 # A4：未交付产物不得被承诺。判定为「命中且同一句内没有否定」。
 COMMITMENT_TOKENS = ("随交付包", "随包提供", "交付适配器", "提供适配器")
 NEGATIONS = ("不随", "不提供", "不包含", "不含", "未提供", "不承诺", "不得", "不出现", "禁止")
+
+# A8：无商业面的成员不得对外宣称交付形态。与 A4 分轴——A4 判「能力行 × 未交付产物」，
+# A8 判「成员 × 无商业面」。2026-11-13 实历：哲思卡两语都写「可私有化部署」/「private
+# deployment available」，而真源记它 commercial_face: none、哲思自身站点对「私有化 / 部署 /
+# self-host」零命中——主张只活在官网卡片正文里：A3 只判前置字段（入口/可用性），A4 只判
+# 能力行文案，两条都不覆盖卡片正文。交付是商业行为，无商业面的成员许诺交付，等于许诺
+# 一个不存在的通道。
+DELIVERY_CLAIM_TOKENS = (
+    "私有化部署",
+    "可私有化",
+    "私有化交付",
+    "交付包",
+    "交付适配器",
+    "上门部署",
+    "现场部署",
+    "on-prem",
+    "on prem",
+    "on-premise",
+    "private deployment",
+    "self-host",
+    "self host",
+)
+# 英文否定词；作用域同样只到「一句」。
+NEGATIONS_EN = ("not ", "no ", "without", "never", "n't ")
 
 MAX_REPORT = 20
 
@@ -598,8 +624,60 @@ def check_a7_matrix(truth: dict, web_root: Path) -> Result:
     return ok(f"矩阵与真源一致（{len(caps)} 能力行）")
 
 
-# --------------------------------------------------------------------- 主流程
+def member_card_body(path: Path) -> str:
+    """卡片正文（去掉 `---` 包住的前置字段）。A8 只判正文，前置字段归 A3。"""
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return ""
+    lines = text.splitlines()
+    if lines and lines[0].strip() == "---":
+        for i, line in enumerate(lines[1:], start=1):
+            if line.strip() == "---":
+                return "\n".join(lines[i + 1 :])
+    return text
 
+
+def check_a8_delivery_claims(truth: dict, site_root: Path) -> Result:
+    """无商业面（incubation）的成员，官网卡片正文不得出现交付类主张。
+
+    判定单元是**一句**：命中交付词族且同一句里没有否定词。作用域不放大到整段/整卡，
+    否则同卡别处的「不提供…」会把真主张一起赦免（A4 在 2026-11-13 栽过同一个跟头）。
+    """
+    apps_dir = site_root / "src" / "content" / "apps"
+    if not apps_dir.is_dir():
+        return skip(f"官网 content 不存在：{apps_dir}")
+
+    incubation = [m for m in truth["members"] if m.get("availability") == "incubation"]
+    if not incubation:
+        return ok("无 incubation 成员")
+
+    problems: list[str] = []
+    scanned = 0
+    for member in incubation:
+        mid = member["id"]
+        for lang in ("zh", "en"):
+            path = apps_dir / lang / f"{mid}.md"
+            if not path.is_file():
+                continue  # 缺卡由 A3 点名；这里不重复
+            scanned += 1
+            for sentence in re.split(r"[。；;，,\n]", member_card_body(path)):
+                low = sentence.lower()
+                hit = next((t for t in DELIVERY_CLAIM_TOKENS if t.lower() in low), None)
+                if not hit:
+                    continue
+                if any(n in sentence for n in NEGATIONS) or any(n in low for n in NEGATIONS_EN):
+                    continue
+                problems.append(f"{lang}/{mid}.md 宣称交付「{hit}」：{sentence.strip()[:60]}")
+
+    if not scanned:
+        return skip("incubation 成员卡均不存在，无从判定")
+    if problems:
+        return bad("；".join(problems[:MAX_REPORT]))
+    return ok(f"{len(incubation)} 个 incubation 成员 × 2 语，卡片正文零交付主张")
+
+
+# --------------------------------------------------------------------- 主流程
 def main() -> int:
     ap = argparse.ArgumentParser(description="识律产品条线一致性门（只读）")
     ap.add_argument("--web-root", type=Path, default=ROOT / "fd-lex" / "web")
@@ -631,6 +709,7 @@ def main() -> int:
     run("A5", "数字白名单", lambda: check_a5(truth, args.web_root, args.site_root, args.catalog))
     run("A6", "宿主一致性", lambda: check_a6(truth, args.web_root))
     run("A7", "人读矩阵", lambda: check_a7_matrix(truth, args.web_root))
+    run("A8", "成员交付主张", lambda: check_a8_delivery_claims(truth, args.site_root))
 
     failures = 0
     skips = 0
@@ -654,7 +733,7 @@ def main() -> int:
     if skips:
         print(f"绿：0 项失败，{skips} 项 SKIP（非严格模式放行；CI 请加 --strict）。")
         return 0
-    print("绿：八类断言全过（A0-A7），四层投影与真源一致。")
+    print("绿：九类断言全过（A0-A8），四层投影与真源一致。")
     return 0
 
 

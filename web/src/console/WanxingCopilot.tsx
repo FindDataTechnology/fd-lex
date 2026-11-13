@@ -12,8 +12,8 @@ import { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { CONSOLE_TABS } from './ConsoleLayout'
 import { loadSession } from './auth'
+import { WANXING_ORIGIN } from './config'
 
-const WANXING_ORIGIN = 'https://wanxing.finddatatech.cloud'
 const LINE = 'lex'
 
 // 动词表在钩子里声明给 loader——widget 只渲染已声明的动词。

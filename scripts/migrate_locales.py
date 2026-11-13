@@ -23,10 +23,13 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+# 识律家族五成员：五个宿主同形制，生成器也要认全，否则新宿主的 .ts 只能手搬。
 HOSTS = {
     "fd-lex": ROOT / "fd-lex" / "web" / "src",
     "fd-shilun": ROOT / "fd-shilun" / "web" / "src",
     "fd-zhesi": ROOT / "fd-zhesi" / "web" / "src",
+    "fd-juchuang": ROOT / "fd-juchuang" / "web" / "src",
+    "fd-zhengxin": ROOT / "fd-zhengxin" / "web" / "src",
 }
 LOCALES = ("zh", "en")
 INTERP = re.compile(r"\{\{\s*([\w.]+)\s*\}\}")

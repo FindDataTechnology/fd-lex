@@ -29,10 +29,13 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = ROOT / "fd-lex" / "scripts"
+# 识律家族五成员：哨兵覆盖要跟成员数一致。少一处就等于该宿主的漂移无人看见。
 HOSTS = {
     "fd-lex": ROOT / "fd-lex" / "web",
     "fd-shilun": ROOT / "fd-shilun" / "web",
     "fd-zhesi": ROOT / "fd-zhesi" / "web",
+    "fd-juchuang": ROOT / "fd-juchuang" / "web",
+    "fd-zhengxin": ROOT / "fd-zhengxin" / "web",
 }
 
 

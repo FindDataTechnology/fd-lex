@@ -60,85 +60,111 @@
     "columnPoints": "Highlights",
     "columnHost": "Hosting",
     "items": {
-      "retrieval": {
-        "name": "Legal data search",
-        "latin": "Legal Search MCP",
-        "desc": "Legal search service for agents and business systems, with source citations attached to results.",
+      "search": {
+        "name": "Legal Search",
+        "latin": "Legal Search",
+        "desc": "Legal retrieval for agents and business systems, every result carrying its source.",
         "points": [
           "Statute semantic search",
           "Similar-case search",
           "Guiding-case search",
-          "Article-level citation parsing",
-          "Five-source corpus (provided with the corpus pack)"
+          "Article-level citation resolution",
+          "Five-source corpus (with the corpus pack)"
         ],
         "host": "both",
         "note": ""
       },
       "contract": {
-        "name": "Contract intelligence",
+        "name": "Contract Intelligence",
         "latin": "LawBench",
-        "desc": "The legal contract workbench: drafting and review.",
+        "desc": "A contract workbench: drafting and review.",
         "points": [
-          "Contract drafting and generation",
+          "Contract drafting",
           "Contract review",
+          "Clause assembly with rubric scoring",
+          "Before/after comparison table",
           "52 domain tools"
         ],
         "host": "both",
         "note": ""
       },
-      "esignature": {
+      "matter": {
+        "name": "Matter",
+        "latin": "Matter",
+        "desc": "The evidence chain and cost pivot of one case: artifacts from every stage land on one reviewable chain.",
+        "points": [
+          "Open / list / show",
+          "Artifact registration and listing (content-addressed)",
+          "Provenance triple: source · stable id · as-of",
+          "Cross-stage references: search → review → signature",
+          "Per-matter cost can be totalled"
+        ],
+        "host": "both",
+        "note": ""
+      },
+      "esign": {
         "name": "Contract e-signature",
         "latin": "E-Signature",
-        "desc": "One chain from review to evidence: anchor the finalized version by hash, send signing links, and seal only after identity and signing-intent verification.",
+        "desc": "Review, finalise, sign and certify on one chain: the final version is hash-anchored before signing, and the counterparty completes identity verification and consent before signing.",
         "points": [
-          "Review, final draft, signing and evidence in one flow",
-          "Identity and signing-intent verification via a licensed provider",
-          "Hash-anchored final version; contract text never leaves your side",
-          "Applicability gate for documents excluded by law",
-          "Certificate chain, trusted timestamp and audit trail — tamper-evident"
+          "Review → finalise → sign → certify",
+          "Identity verification and signing consent (licensed provider)",
+          "Final-version hash anchoring; the contract text never leaves the customer side",
+          "Applicability gate for legally excluded documents",
+          "Certificate chain, timestamp and audit trail in the certification; tampering detectable"
         ],
         "status": "preview",
-        "note": "In preview: the signing leg is being integrated with a licensed e-signature provider; cloud and on-prem signing open after sandbox validation. Article 14 of the PRC E-Signature Law: a reliable electronic signature has the same legal effect as a handwritten signature or seal."
+        "note": "In preview: the signing leg is being connected to a licensed e-signature provider and opens after sandbox validation. E-Signature Law art. 14: a reliable electronic signature has the same legal effect as a handwritten signature or seal."
       },
       "models": {
         "name": "In-house legal models",
         "latin": "Lex Models",
-        "desc": "In-house fine-tuned models on two legs: review and drafting.",
+        "desc": "Fine-tuned in-house models, one leg for review and one for drafting.",
         "points": [
-          "Judge (judge_c) · review",
-          "Drafter (drafter_a) · drafting",
-          "Quantized artifacts and paired evaluation reports ship with the package"
+          "judge_c · review",
+          "drafter_a · drafting",
+          "Embedded in Contract Intelligence and private delivery; no standalone model API"
         ],
         "host": "private",
-        "note": "Cloud GPU inference and model API: not provided in v1 (planned for v1.x)"
+        "note": "Cloud GPU inference and model API: not provided in v1 (planned for v1.x); quantised artifacts and benchmark reports do not ship with the distribution package."
       },
       "distribution": {
-        "name": "Private distribution package",
+        "name": "Private distribution",
         "latin": "Distribution",
-        "desc": "Versioned full-stack delivery: installation, upgrades, three data tiers and incremental updates.",
+        "desc": "Versioned full-stack delivery: install, upgrade, three data tiers and incremental updates.",
         "points": [
-          "Citation pack: statute library + statute catalog + guiding cases (required base)",
-          "Corpus pack: adds the five-source corpus and contract templates (optional)",
-          "Judgment pack: full judgments, approx. 175 GB, customized after per-project legal review",
-          "Incremental updates: daily / weekly pulls + offline full-package fallback"
+          "Reference pack: statute library + statute catalogue + guiding cases (required base)",
+          "Corpus pack: five-source corpus plus contract templates (optional)",
+          "Judgments pack: full judgments, about 175 GB, on legal approval (custom)",
+          "Incremental updates: daily / weekly plus offline full-package fallback"
         ],
         "host": "private",
-        "note": "On-premises side only"
+        "note": "Private host only"
       },
-      "api": {
+      "access": {
         "name": "API / MCP access",
         "latin": "API & MCP",
-        "desc": "One credential for legal search and legal data tools.",
+        "desc": "One set of credentials for every capability row: MCP endpoint, customer organisation and dual-unit metering.",
         "points": [
           "MCP protocol endpoint",
-          "Legal data tool set",
+          "Customer organisation and self-serve credentials",
           "Dual-unit metering: per row / per call"
         ],
         "host": "both",
         "note": ""
       }
     },
-    "footnote": "Capability differences between the two hosts are limited to what this catalog annotates; cloud and on-premises are produced by the same builder."
+    "footnote": "Capability differences between the two hosts are limited to what this catalog annotates; cloud and on-premises are produced by the same builder.",
+    "segments": {
+      "capability": {
+        "title": "Capabilities",
+        "lede": "What can be enabled, metered and switched off on its own."
+      },
+      "delivery": {
+        "title": "Delivery",
+        "lede": "Not capability but how you get it: in your machine room, or through one set of credentials."
+      }
+    }
   },
   "pricing": {
     "title": "Pricing",

@@ -1,0 +1,277 @@
+{
+  "schema": "lex-product-lineup/v1",
+  "line": "lex",
+  "hosts": {
+    "product": "law.finddatatech.cloud",
+    "platform": "lex.finddatatech.cloud"
+  },
+  "updated": "2026-11-13",
+  "_notes": {
+    "what": "识律（lex）产品条线的单一真源。站点能力目录、官网成员卡、人读矩阵（docs/PRODUCT-LINEUP.md）与市场套件映射都是它的投影；任何一处与本文不一致即判为漂移，由 scripts/check_product_lineup.py 判定。",
+    "why_json": "门的依赖定为零：系统 python 无 PyYAML，而为一个只读体检脚本装依赖不划算。纪律说明放在 _notes 里（与 docs/legal-presets/suites/*.json 的 _detail 同惯例）。",
+    "axes": "四轴正交，不是树：members（谁在这条线里、成熟到什么程度）/ capabilities（能单独报价、单独停、单独计量的东西）/ suites（套件是能力的打包单位，不是独立产品层）/ tiers（私有化交付装哪些数据域）。",
+    "edit_order": "先改这里，再改投影，最后跑门。反过来做一定会漂。",
+    "canonical": "两个宿主面，不是一个域名的两个别名。product=良律产品门面（SEO canonical，官网入口指这里）；platform=家族与既有客户入口，同时承载控制台 / MCP / 签署人公网链——Logto 回跳与在途签署链钉在这里，不可改指。2026-10-30 的既定裁决是「不做 301、两边各自独立可访问」，本条沿用。已知欠账：两 host 目前服务同一份前端构建产物（产品站与控制台的前端分化未做），故 product 面声明 rel=canonical 以收敛重复内容。",
+    "availability": "只有三个合法值：live（有完整商业面：报价/客户组织/计量计费/控制台）、preview（能力可用、对外通道未开）、incubation（有站点、无商业面）。incubation 成员 MUST NOT 出现价格、试用、SLA 或「即将上线」类时间承诺。",
+    "segment": "capability 段 = 可单独报价/停用/计量的能力；delivery 段 = 交付形态或接入面，本身不是能力，不得计入能力段。",
+    "host_vocab": "host 每格必须显式，取值 available | preview | unavailable。",
+    "suites": "consumes 必须落在 capability 段内（delivery 段不算）。技能层内容（分析流程、计算器、文书转换等）写在 preset 里——它们是技能，不占能力行，也不单独计量。",
+    "tiers": "档位装的是数据域，不是能力行。",
+    "non_member_surfaces": "lex 线页上的卡片 = members(5) ∪ non_member_surfaces。品牌层只认 members：家族页五张平级卡；其余是能力面/数据面，可以出现在线页与应用目录，但不得被说成家族成员。"
+  },
+  "members": [
+    {
+      "id": "lianglu",
+      "name": "良律",
+      "latin": "LiangLü",
+      "repo": "fd-lex",
+      "availability": "live",
+      "site": "https://law.finddatatech.cloud",
+      "commercial_face": "报价 · 客户组织 · 计量计费 · 客户控制台 · 市场套件 · 私有化交付",
+      "note": "识律线的主平台，也是本条线唯一具备完整商业面的成员"
+    },
+    {
+      "id": "zhesi",
+      "name": "哲思",
+      "latin": "Zhesi",
+      "repo": "fd-zhesi",
+      "availability": "incubation",
+      "site": "https://zhesi.finddatatech.cloud",
+      "commercial_face": "none",
+      "note": "世界观工坊；参照系检索在 fd-zhesi-reference（在跑的 MCP 服务）"
+    },
+    {
+      "id": "shilun",
+      "name": "实论",
+      "latin": "Shilun",
+      "repo": "fd-shilun",
+      "availability": "incubation",
+      "site": "https://shilun.finddatatech.cloud",
+      "commercial_face": "none",
+      "note": "论文检索与严肃写作；检索与引文能力经 fd-text-core"
+    },
+    {
+      "id": "juchuang",
+      "name": "剧创",
+      "latin": "Juchuang",
+      "repo": "fd-juchuang",
+      "availability": "incubation",
+      "site": "https://juchuang.finddatatech.cloud",
+      "commercial_face": "none",
+      "note": "剧本与 AI 内容底料；结构化剧本与分镜，语料受公版边界约束"
+    },
+    {
+      "id": "zhengxin",
+      "name": "政心",
+      "latin": "Zhengxin",
+      "repo": "fd-zhengxin",
+      "availability": "incubation",
+      "site": "https://zhengxin.finddatatech.cloud",
+      "commercial_face": "none",
+      "note": "政情数据底座与读面，参照系在 fd-zhengxin-reference"
+    }
+  ],
+  "capabilities": [
+    {
+      "id": "search",
+      "segment": "capability",
+      "name": "法律检索",
+      "latin": "Legal Search",
+      "desc": "面向智能体与业务系统的法律检索服务，结果附来源引用。",
+      "surface": "fd-legal-search-mcp · 10 个工具",
+      "host": {
+        "cloud": "available",
+        "private": "available"
+      },
+      "status": "live",
+      "metering": "per_call",
+      "boundary": ""
+    },
+    {
+      "id": "contract",
+      "segment": "capability",
+      "name": "合同智能",
+      "latin": "LawBench",
+      "desc": "合同起草与三重评审工作台：条款装配、rubric 打分、版本对比。",
+      "surface": "law-bench · 52 个工具",
+      "host": {
+        "cloud": "available",
+        "private": "available"
+      },
+      "status": "live",
+      "metering": "per_call+per_row",
+      "boundary": ""
+    },
+    {
+      "id": "matter",
+      "segment": "capability",
+      "name": "案件",
+      "latin": "Matter",
+      "desc": "一个案子的证据链与成本归集点：产物登记、溯源三元组、跨环节引用。",
+      "surface": "lex-ops-mcp · 5 个工具 + fd-lex REST",
+      "host": {
+        "cloud": "available",
+        "private": "available"
+      },
+      "status": "live",
+      "metering": "per_call",
+      "boundary": "不计入任何市场套件：它是跨环节的平台能力，不是某个场景的打包内容"
+    },
+    {
+      "id": "esign",
+      "segment": "capability",
+      "name": "合同电子签署",
+      "latin": "E-Signature",
+      "desc": "审查、定稿、签署与出证走同一条链：定稿版本哈希锚定后发起签署。",
+      "surface": "fd-lex · esignature 模块（可插拔 adapter）",
+      "host": {
+        "cloud": "preview",
+        "private": "unavailable"
+      },
+      "status": "preview",
+      "metering": "per_instance",
+      "boundary": "签署腿为 stub（内测假件、出证无司法效力）；持牌服务商通道接入后开放云端签署"
+    },
+    {
+      "id": "models",
+      "segment": "capability",
+      "name": "自有法律模型",
+      "latin": "Lex Models",
+      "desc": "自研微调模型，评审与起草两条腿（判官 judge_c · 起草 drafter_a）。",
+      "surface": "内嵌于合同智能与私有化交付",
+      "host": {
+        "cloud": "unavailable",
+        "private": "available"
+      },
+      "status": "live",
+      "metering": "not_metered_separately",
+      "boundary": "不单独提供云端模型 API 或 GPU 推理入口（规划 v1.x）；量化产物与对照评测报告不随交付包"
+    },
+    {
+      "id": "distribution",
+      "segment": "delivery",
+      "name": "私有化交付包",
+      "latin": "Distribution",
+      "desc": "全栈版本化交付：安装、升级、数据三档与增量更新，客户机房内运行。",
+      "surface": "引用包 / 语料包 / 文书包",
+      "host": {
+        "cloud": "unavailable",
+        "private": "available"
+      },
+      "status": "live",
+      "metering": "per_project",
+      "boundary": "仅私有化侧"
+    },
+    {
+      "id": "access",
+      "segment": "delivery",
+      "name": "API / MCP 接入",
+      "latin": "API & MCP",
+      "desc": "统一凭据接入全部能力行；MCP 协议端点与双单位计量。",
+      "surface": "MCP 网关 lex 入口 + 客户组织 + 计量",
+      "host": {
+        "cloud": "available",
+        "private": "available"
+      },
+      "status": "live",
+      "metering": "per_call+per_row",
+      "boundary": "接入面本身不具备业务语义；它计量的是各能力行的调用"
+    }
+  ],
+  "suites": [
+    {
+      "id": "lex-legal-research",
+      "name": "识律 · 法律检索套件",
+      "consumes": [
+        "search"
+      ],
+      "preset": "法律检索研究五件套（法条效力核查 / 类案报告 / 概念图解 / 五源语料 / 法规生命周期）"
+    },
+    {
+      "id": "lex-contract-review-cn",
+      "name": "识律 · 合同审查套件",
+      "consumes": [
+        "contract",
+        "search"
+      ],
+      "preset": "合同审查（五张行业审查卡）+ v2 修改对比表"
+    },
+    {
+      "id": "lex-litigation-docs",
+      "name": "识律 · 诉讼文书套件",
+      "consumes": [
+        "search"
+      ],
+      "preset": "起诉状/答辩状/证据目录 + v2 要素式格式转换"
+    },
+    {
+      "id": "lex-civil-nine-step",
+      "name": "识律 · 民事诉讼套件",
+      "consumes": [
+        "search"
+      ],
+      "preset": "民商事案件九步分析（诉讼请求 → 请求权基础 → 抗辩 → 要件 → 检索 → 争点）"
+    },
+    {
+      "id": "lex-criminal-defense",
+      "name": "识律 · 刑事辩护套件",
+      "consumes": [
+        "search"
+      ],
+      "preset": "刑事辩护总控流程 + 认罪认罚/不起诉论证 + 庭审发问提纲"
+    },
+    {
+      "id": "lex-labor",
+      "name": "识律 · 劳动法套件",
+      "consumes": [
+        "search"
+      ],
+      "preset": "劳动仲裁全流程 + 劳动补偿金/人身损害双计算器"
+    }
+  ],
+  "tiers": [
+    {
+      "id": "reference",
+      "name": "引用包",
+      "includes": [
+        "法规库",
+        "法规目录",
+        "指导案例"
+      ],
+      "optional": false,
+      "note": "必选底座"
+    },
+    {
+      "id": "corpus",
+      "name": "语料包",
+      "includes": [
+        "五源语料",
+        "合同范本"
+      ],
+      "optional": true,
+      "note": "可选"
+    },
+    {
+      "id": "judgments",
+      "name": "文书包",
+      "includes": [
+        "裁判文书全量"
+      ],
+      "optional": true,
+      "note": "约 175 GB，按项目法务过审后交付"
+    }
+  ],
+  "numbers_source": "collateral/numbers.md",
+  "non_member_surfaces": [
+    {
+      "id": "zhiyantai",
+      "name": "知验台",
+      "note": "多线共用的评测与本体工作台（一个域一页账）。是能力面，不是品牌成员；官网 lex 线下列卡但不进家族五成员。"
+    },
+    {
+      "id": "contract-templates",
+      "name": "合同示范文本数据服务",
+      "note": "市场监管总局示范文本语料，良律的数据面。是数据面，不是品牌成员；官网 lex 线下列卡但不进家族五成员。"
+    }
+  ]
+}

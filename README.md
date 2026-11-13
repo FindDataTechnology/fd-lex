@@ -1,6 +1,15 @@
 # fd-lex
 
-识律（lex）独立平台门面单仓：`lex.finddatatech.cloud` 四入口的 web 面（官网 / 控制台 / 管理后台）+ FastAPI 服务端（结算/分发/后台 API）。
+识律（lex）独立平台门面单仓：四入口的 web 面（官网 / 控制台 / 管理后台）+ FastAPI 服务端（结算/分发/后台 API）。
+
+**两个宿主面（不是同一入口的两个地址）**——完整口径见 `docs/PRODUCT-LINEUP.md` 与单一真源 `docs/product-lineup.json`：
+
+| 宿主面 | 域名 | 职责 |
+|---|---|---|
+| 产品面 `product` | `law.finddatatech.cloud` | 良律（LiangLü）产品门面；官网与材料里的对外入口指这里；页面声明 `rel=canonical` |
+| 平台面 `platform` | `lex.finddatatech.cloud` | 家族与既有客户入口，同时承载 `/console`、`/mcp`、签署人公网链——Logto 回跳与在途签署链钉在这里，**不可改指** |
+
+两面之间不做跳转（2026-10-30 裁决：各自独立可访问）。**已知欠账**：两面目前服务同一份前端构建产物，产品站与控制台的内容分化未做。
 
 建仓依据 `openspec/changes/lex-platform-v1`（task 4.1 **当年只落地骨架**；此后服务端已成长为真实计费面，见「仓结构」下的更正）。技术栈（design D12）：前端 React 19 + Vite + TS + Tailwind v4 + i18next 双语（fd 舰队配方）；服务端 Python FastAPI（萬星 bookkeeping 概念移植）；部署 cheap fd-prod + TCR + ArgoCD（mcp-service-deploy 既有模式）。
 

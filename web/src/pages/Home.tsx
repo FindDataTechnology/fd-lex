@@ -5,7 +5,13 @@ import HostBadge, { type CapabilityHost, PreviewBadge } from '../components/Host
 import Layout from '../components/Layout'
 import StackDiagram from '../components/StackDiagram'
 
-const CAPABILITY_KEYS = ['retrieval', 'contract', 'esignature', 'models', 'distribution', 'api'] as const
+// 能力目录的两段口径（能力 / 交付），与真源 fd-lex/docs/product-lineup.json 的
+// segment 字段一一对应。scripts/check_product_lineup.py 会解析本常量，
+// 与本文件外的任何一处投影不等即红——改这里必须同时改真源。
+const SEGMENTS = [
+  { id: 'capability', keys: ['search', 'contract', 'matter', 'esign', 'models'] },
+  { id: 'delivery', keys: ['distribution', 'access'] },
+] as const
 const STAT_KEYS = ['wenshu', 'catalog', 'tools'] as const
 const PRICING_DIMENSIONS = ['units', 'quota', 'overage', 'updates', 'deploy'] as const
 const DOC_SECTIONS = ['deploy', 'airgap', 'upgrade', 'updates', 'offline', 'tiers'] as const
@@ -71,8 +77,57 @@ function Hero() {
   )
 }
 
-function Capabilities() {
+function CapabilityRow({ itemKey }: { itemKey: string }) {
   const { t, raw } = useTranslation()
+  const host = t(`capabilities.items.${itemKey}.host`) as CapabilityHost
+  const status = t(`capabilities.items.${itemKey}.status`, { defaultValue: '' })
+  const points = tArray(raw, `capabilities.items.${itemKey}.points`)
+  const note = t(`capabilities.items.${itemKey}.note`)
+
+  return (
+    <li className="grid gap-5 py-8 lg:grid-cols-12 lg:gap-6">
+      <div className="lg:col-span-4">
+        <h3 className="font-display text-xl font-semibold">
+          {t(`capabilities.items.${itemKey}.name`)}
+        </h3>
+        <p className="mt-1 text-xs font-medium uppercase tracking-[0.14em] text-ink-soft">
+          {t(`capabilities.items.${itemKey}.latin`)}
+        </p>
+        <p className="mt-3 max-w-sm text-sm leading-relaxed text-ink-soft">
+          {t(`capabilities.items.${itemKey}.desc`)}
+        </p>
+      </div>
+      <div className="lg:col-span-5">
+        <ul className="space-y-2.5">
+          {points.map((point) => (
+            <li key={point} className="flex gap-2.5 text-sm leading-relaxed">
+              <span
+                aria-hidden="true"
+                className="mt-[0.6em] h-1 w-1 shrink-0 rounded-[1px] bg-line-strong"
+              />
+              <span>{point}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="lg:col-span-3">
+        {status === 'preview' ? <PreviewBadge /> : <HostBadge host={host} />}
+        {note !== '' && (host === 'private' || status === 'preview') && (
+          <p
+            className={`mt-2.5 max-w-[16rem] text-xs leading-relaxed ${
+              status === 'preview' ? 'text-ink-soft' : 'text-seal'
+            }`}
+          >
+            {note}
+          </p>
+        )}
+      </div>
+    </li>
+  )
+}
+
+function Capabilities() {
+  const { t } = useTranslation()
 
   return (
     <section id="capabilities" className="scroll-mt-20 bg-paper">
@@ -93,56 +148,23 @@ function Capabilities() {
             <div className="col-span-3">{t('capabilities.columnHost')}</div>
           </div>
 
-          <ul className="divide-y divide-line border-b-2 border-ink">
-            {CAPABILITY_KEYS.map((key) => {
-              const host = t(`capabilities.items.${key}.host`) as CapabilityHost
-              const status = t(`capabilities.items.${key}.status`, {
-                defaultValue: '',
-              })
-              const points = tArray(raw, `capabilities.items.${key}.points`)
-              const note = t(`capabilities.items.${key}.note`)
-              return (
-                <li key={key} className="grid gap-5 py-8 lg:grid-cols-12 lg:gap-6">
-                  <div className="lg:col-span-4">
-                    <h3 className="font-display text-xl font-semibold">
-                      {t(`capabilities.items.${key}.name`)}
-                    </h3>
-                    <p className="mt-1 text-xs font-medium uppercase tracking-[0.14em] text-ink-soft">
-                      {t(`capabilities.items.${key}.latin`)}
-                    </p>
-                    <p className="mt-3 max-w-sm text-sm leading-relaxed text-ink-soft">
-                      {t(`capabilities.items.${key}.desc`)}
-                    </p>
-                  </div>
-                  <div className="lg:col-span-5">
-                    <ul className="space-y-2.5">
-                      {points.map((point) => (
-                        <li key={point} className="flex gap-2.5 text-sm leading-relaxed">
-                          <span
-                            aria-hidden="true"
-                            className="mt-[0.6em] h-1 w-1 shrink-0 rounded-[1px] bg-line-strong"
-                          />
-                          <span>{point}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div className="lg:col-span-3">
-                    {status === 'preview' ? <PreviewBadge /> : <HostBadge host={host} />}
-                    {note !== '' && (host === 'private' || status === 'preview') && (
-                      <p
-                        className={`mt-2.5 max-w-[16rem] text-xs leading-relaxed ${
-                          status === 'preview' ? 'text-ink-soft' : 'text-seal'
-                        }`}
-                      >
-                        {note}
-                      </p>
-                    )}
-                  </div>
-                </li>
-              )
-            })}
-          </ul>
+          {/* 两段：能力（能做什么） / 交付（怎么拿到）。分段口径与真源
+              fd-lex/docs/product-lineup.json 的 segment 字段一一对应。 */}
+          {SEGMENTS.map((segment) => (
+            <div key={segment.id} className="mt-10 first:mt-8">
+              <h3 className="font-display text-lg font-semibold">
+                {t(`capabilities.segments.${segment.id}.title`)}
+              </h3>
+              <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">
+                {t(`capabilities.segments.${segment.id}.lede`)}
+              </p>
+              <ul className="mt-5 divide-y divide-line border-b-2 border-ink">
+                {segment.keys.map((itemKey) => (
+                  <CapabilityRow key={itemKey} itemKey={itemKey} />
+                ))}
+              </ul>
+            </div>
+          ))}
 
           <p className="mt-5 text-xs leading-relaxed text-ink-soft">
             {t('capabilities.footnote')}

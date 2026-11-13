@@ -27,10 +27,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]  # finddata/
 
 #: 宿主 → web/src 目录
+# 识律家族五成员：五个宿主都要过键位对等。此前只登记了三处（lex/shilun/zhesi），
+# juchuang 与 zhengxin 少一个键时界面上是空白而不是报错——正是本门要拦的那种静默缺陷。
 HOSTS = {
     "fd-lex": ROOT / "fd-lex" / "web" / "src",
     "fd-shilun": ROOT / "fd-shilun" / "web" / "src",
     "fd-zhesi": ROOT / "fd-zhesi" / "web" / "src",
+    "fd-juchuang": ROOT / "fd-juchuang" / "web" / "src",
+    "fd-zhengxin": ROOT / "fd-zhengxin" / "web" / "src",
 }
 
 LOCALES = ("zh", "en")

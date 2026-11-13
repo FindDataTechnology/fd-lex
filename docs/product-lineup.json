@@ -233,6 +233,7 @@
     {
       "id": "reference",
       "name": "引用包",
+      "name_en": "Reference pack",
       "includes": [
         "法规库",
         "法规目录",
@@ -244,6 +245,7 @@
     {
       "id": "corpus",
       "name": "语料包",
+      "name_en": "Corpus pack",
       "includes": [
         "五源语料",
         "合同范本"
@@ -254,6 +256,7 @@
     {
       "id": "judgments",
       "name": "文书包",
+      "name_en": "Judgments pack",
       "includes": [
         "裁判文书全量"
       ],

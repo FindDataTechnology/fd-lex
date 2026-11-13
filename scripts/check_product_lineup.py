@@ -5,7 +5,7 @@
 本脚本把它变成一个命令，避免"我记得改过"。
 
 真源：`fd-lex/docs/product-lineup.json`（四张表：members / capabilities / suites / tiers）。
-投影与断言（九类 A0-A8，逐条可独立注入为红）：
+投影与断言（十类 A0-A9，逐条可独立注入为红）：
 
   A0 真源结构   —— 四张表齐全、id 唯一、枚举合法（availability / segment / host 词表）
   A1 站点目录   —— 两语 `capabilities.items` 的键集 == 真源行集，且每行宿主徽标与真源一致
@@ -16,6 +16,7 @@
   A6 宿主一致性 —— 预览行不得标成可用、仅私有化行不得标成双宿主；站点声明 canonical
   A7 人读矩阵   —— PRODUCT-LINEUP.md 的能力行与真源双向一致
   A8 成员交付主张 —— incubation 成员的官网卡片正文不得宣称私有化部署/交付包等交付形态
+  A9 交付档位投影 —— tiers 的档位名（两语）/必选语义/容量数字与站点文案一致
 
 用法：
     python3 fd-lex/scripts/check_product_lineup.py                 # 全部（缺失路径记 SKIP）
@@ -77,6 +78,9 @@ DELIVERY_CLAIM_TOKENS = (
 )
 # 英文否定词；作用域同样只到「一句」。
 NEGATIONS_EN = ("not ", "no ", "without", "never", "n't ")
+
+# A9：容量数字。A5 的 NUM_RE 认不出 GB/TB，档位的「约 175 GB」只能靠这条。
+CAPACITY_RE = re.compile(r"\d+(?:\.\d+)?\s*(?:GB|TB)", re.I)
 
 MAX_REPORT = 20
 
@@ -677,6 +681,93 @@ def check_a8_delivery_claims(truth: dict, site_root: Path) -> Result:
     return ok(f"{len(incubation)} 个 incubation 成员 × 2 语，卡片正文零交付主张")
 
 
+def _all_strings(obj: object) -> list[str]:
+    out: list[str] = []
+    if isinstance(obj, dict):
+        for v in obj.values():
+            out.extend(_all_strings(v))
+    elif isinstance(obj, list):
+        for v in obj:
+            out.extend(_all_strings(v))
+    elif isinstance(obj, str):
+        out.append(obj)
+    return out
+
+
+def check_a9_tiers(truth: dict, web_root: Path) -> Result:
+    """交付档位投影：档位名、必选/可选、容量数字必须与真源一致。
+
+    为什么单单把 tiers 拎出来加一条：它是对外最贵、也最容易过期的一段。容量数字
+    只活在真源 `tiers[].note` 的一句散文里（「约 175 GB」），而 A5 的 NUM_RE 只认
+    千分位与万/亿——`175 GB` 不在其中。文书全量涨到 210 GB 时 numbers.md 会更新，
+    站点会继续报 175，没有任何东西会红。
+
+    必选判据是**方向不对称**的：必选档位没标必选 → 失败（漏说）；非必选档位被标
+    必选 → 失败（把可选项说成自带，这是过度承诺）。反向不设：可选档位写「定制」
+    也是如实的，不该红。
+    """
+    tiers = truth.get("tiers") or []
+    if not tiers:
+        return ok("无交付档位")
+
+    problems: list[str] = []
+    scanned = 0
+    for lang, name_key in (("zh", "name"), ("en", "name_en")):
+        path = web_root / "src" / "locales" / lang / "translation.json"
+        data = load_json(path) if path.is_file() else None
+        if not data:
+            continue
+        scanned += 1
+        strings = _all_strings(data)
+        for tier in tiers:
+            label = tier.get(name_key)
+            tid = tier.get("id")
+            if not label:
+                problems.append(f"真源 tiers[{tid}] 缺 {name_key}，两语投影无从对照")
+                continue
+            hits = [s for s in strings if label in s]
+            if not hits:
+                problems.append(f"{lang} 缺档位「{label}」（真源 tiers[{tid}]）")
+                continue
+            # 判定单元是**含本档位名的那一个分句**，不是整句：中文常把三档写在同一句
+            # 「引用包…为必选底座；语料包与文书包为可选档」——按整句判，前一分句的
+            # 「必选」会被算到语料包/文书包头上，首版就此误报两次。
+            for sentence in hits:
+                for clause in re.split(r"[。；;，,]", sentence):
+                    if label not in clause:
+                        continue
+                    low = clause.lower()
+                    says_required = ("必选" in clause) or ("required" in low)
+                    if tier.get("optional") is False and not says_required:
+                        problems.append(
+                            f"{lang} 档位「{label}」为必选，文案未标必选：{clause.strip()[:50]}"
+                        )
+                    elif tier.get("optional") is True and says_required:
+                        problems.append(
+                            f"{lang} 档位「{label}」非必选，文案却标必选：{clause.strip()[:50]}"
+                        )
+            truth_caps = {
+                m.group(0).replace(" ", "").upper()
+                for m in CAPACITY_RE.finditer(tier.get("note") or "")
+            }
+            site_caps: set[str] = set()
+            for sentence in hits:
+                site_caps |= {
+                    m.group(0).replace(" ", "").upper()
+                    for m in CAPACITY_RE.finditer(sentence)
+                }
+            for extra in sorted(site_caps - truth_caps):
+                problems.append(f"{lang} 档位「{label}」报出真源未记录的容量 {extra}")
+            for missing in sorted(truth_caps - site_caps):
+                problems.append(f"{lang} 档位「{label}」真源记 {missing} 而文案未提")
+
+    if not scanned:
+        return skip("两语站点文案均不存在，无从判定")
+    if problems:
+        return bad("；".join(problems[:MAX_REPORT]))
+    return ok(f"{len(tiers)} 档位 × {scanned} 语：名称/必选语义/容量一致")
+
+
 # --------------------------------------------------------------------- 主流程
 def main() -> int:
     ap = argparse.ArgumentParser(description="识律产品条线一致性门（只读）")
@@ -710,6 +801,7 @@ def main() -> int:
     run("A6", "宿主一致性", lambda: check_a6(truth, args.web_root))
     run("A7", "人读矩阵", lambda: check_a7_matrix(truth, args.web_root))
     run("A8", "成员交付主张", lambda: check_a8_delivery_claims(truth, args.site_root))
+    run("A9", "交付档位投影", lambda: check_a9_tiers(truth, args.web_root))
 
     failures = 0
     skips = 0
@@ -733,7 +825,7 @@ def main() -> int:
     if skips:
         print(f"绿：0 项失败，{skips} 项 SKIP（非严格模式放行；CI 请加 --strict）。")
         return 0
-    print("绿：九类断言全过（A0-A8），四层投影与真源一致。")
+    print("绿：十类断言全过（A0-A9），五处投影与真源一致。")
     return 0
 
 

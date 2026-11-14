@@ -23,6 +23,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -49,6 +50,56 @@ def run(cmd: list[str], cwd: Path | None = None, timeout: int = 600) -> tuple[in
     except subprocess.TimeoutExpired:
         return 124, f"超时（{timeout}s）：{' '.join(cmd)}"
     return proc.returncode, (proc.stdout or "") + (proc.stderr or "")
+
+
+# 已登记的「该宿主还没有测试」：只报事实、不计数。**每条必须带解除条件**。
+# 没登记却出现未覆盖 ⇒ 红：那通常是「原本有测试，后来没了」，属回归。
+UNTESTED_KNOWN = {
+    "fd-zhengxin": (
+        "孵化成员，壳（web/）还没有任何测试文件，2026-11-14 实测 package.json 无 test 脚本。"
+        "解除条件：该宿主补上至少一条入口哨兵测试（三入口渲染）后删除本条。"
+    ),
+}
+
+NO_TESTS_PATTERNS = (
+    "no test files found",  # vitest：有 test 脚本但一个测试文件都没有
+    "no tests found",       # jest
+    "未覆盖：",              # 本脚本自己写的结构化原因
+)
+
+
+def has_test_script(web: Path) -> bool | None:
+    """该宿主有没有 `test` 脚本。None＝package.json 读不出来（别把解析失败当未覆盖）。"""
+    try:
+        pkg = json.loads((web / "package.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return "test" in (pkg.get("scripts") or {})
+
+
+def classify(result: tuple[str, str, int, str]) -> str:
+    """ok / fail / uncovered（未登记，红） / known_uncovered（已登记，只报事实）。"""
+    host, _gate, code, _out = result
+    if code == 0:
+        return "ok"
+    if is_no_tests(result):
+        return "known_uncovered" if host in UNTESTED_KNOWN else "uncovered"
+    return "fail"
+
+
+def is_no_tests(result: tuple[str, str, int, str]) -> bool:
+    """非零退出是不是「压根没有测试」而非「测试失败」。
+
+    两种形态都算未覆盖：① `package.json` 没有 `test` 脚本（`npm test` 退 1、静默）；
+    ② 有脚本但零个测试文件（vitest 退 1 并打 `No test files found`）。
+    这两件事的修法与「测试挂了」完全不同（补测试 vs 修代码），混在一档会把
+    「未覆盖」报成「挂了」，然后这条闸长期红到没人看（fd-zhengxin 2026-11-14 实况）。
+    """
+    _, gate, code, out = result
+    if code == 0 or gate != "vitest":
+        return False
+    low = out.lower()
+    return any(p in low for p in NO_TESTS_PATTERNS)
 
 
 def tail(text: str, n: int = 12) -> str:
@@ -96,6 +147,15 @@ def main() -> int:
     # ---- 宿主测试 ----
     if not args.skip_tests:
         for host, web in hosts.items():
+            has_test = has_test_script(web)
+            if has_test is False:
+                # 结构判据，不猜输出：`npm test` 在「package.json 没有 test 脚本」时
+                # 退 1 且 `--silent` 下几乎不打印，跟「测试失败」在输出上分不开。
+                results.append((
+                    host, "vitest", 1,
+                    f"未覆盖：{web.name}/package.json 没有 test 脚本（该宿主还没有测试）",
+                ))
+                continue
             code, out = run(["npm", "test", "--silent"], cwd=web, timeout=900)
             results.append((host, "vitest", code, out))
 
@@ -110,10 +170,21 @@ def main() -> int:
             code, out = run(["node", str(SCRIPTS / "verify_dark_badges.js")])
             results.append(("fd-zhesi", "dark-badges", code, out))
 
-    failed = [r for r in results if r[2] != 0]
-    for host, gate, code, out in results:
-        mark = "✓" if code == 0 else "✗"
-        print(f"{mark} {host:<10} {gate:<14} exit={code}")
+    # 三档，不是两档：过了 / 挂了 / **没有测试**。
+    # 「没有测试」再分两档：登记过的（`UNTESTED_KNOWN`，只报事实）与没登记的（红）——
+    # 后者才是有价值的信号：某个宿主**原本有**测试、后来没了，属于回归。
+    # 全都不加区分地报红就是「常年红的闸」，会被无视（本仓已有同型教训）。
+    classified = [(r, classify(r)) for r in results]
+    failed = [r for r, k in classified if k in ("fail", "uncovered")]
+    known_gaps = [r for r, k in classified if k == "known_uncovered"]
+    for (host, gate, code, out), kind in classified:
+        mark = {"ok": "✓", "known_uncovered": "—"}.get(kind, "✗")
+        note = ""
+        if kind == "known_uncovered":
+            note = "  ← 已登记未覆盖"
+        elif kind == "uncovered":
+            note = "  ← **未登记**的未覆盖（该宿主原本有测试吗？）"
+        print(f"{mark} {host:<10} {gate:<14} exit={code}{note}")
         if code != 0 or args.verbose:
             body = tail(out)
             for line in body.splitlines():
@@ -123,9 +194,22 @@ def main() -> int:
     if failed:
         print(f"FAMILY GATE FAIL: {len(failed)}/{len(results)} 项未通过", file=sys.stderr)
         for host, gate, code, _ in failed:
-            print(f"  - {host} / {gate} (exit {code})", file=sys.stderr)
+            kind = "未登记未覆盖" if is_no_tests((host, gate, code, _)) else "失败"
+            print(f"  - {host} / {gate} (exit {code}，{kind})", file=sys.stderr)
+        if known_gaps:
+            names = "、".join(f"{h}/{g}" for h, g, _, _ in known_gaps)
+            print(f"  （另有 {len(known_gaps)} 项已登记未覆盖：{names}）", file=sys.stderr)
         print("\n提示：壳升级前此门必须全绿；先修源再同步，不要就地改副本", file=sys.stderr)
         return 1
+    if known_gaps:
+        names = "、".join(f"{h}/{g}" for h, g, _, _ in known_gaps)
+        print(f"FAMILY GATE PASS（{len(results) - len(known_gaps)}/{len(results)} 过，"
+              f"{len(known_gaps)} 项已登记未覆盖：{names}）")
+        for host, gate, _, _ in known_gaps:
+            print(f"  - {host}/{gate}：{UNTESTED_KNOWN.get(host, '')}")
+        print("  未覆盖不等于通过，也不等于失败：该宿主还没有测试。"
+              "换宿主或这些宿主真跑起来时，这条要跟着回收。")
+        return 0
     print(f"FAMILY GATE PASS: {len(results)}/{len(results)} 全绿")
     return 0
 

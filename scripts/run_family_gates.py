@@ -54,12 +54,11 @@ def run(cmd: list[str], cwd: Path | None = None, timeout: int = 600) -> tuple[in
 
 # 已登记的「该宿主还没有测试」：只报事实、不计数。**每条必须带解除条件**。
 # 没登记却出现未覆盖 ⇒ 红：那通常是「原本有测试，后来没了」，属回归。
-UNTESTED_KNOWN = {
-    "fd-zhengxin": (
-        "孵化成员，壳（web/）还没有任何测试文件，2026-11-14 实测 package.json 无 test 脚本。"
-        "解除条件：该宿主补上至少一条入口哨兵测试（三入口渲染）后删除本条。"
-    ),
-}
+#
+# 当前**为空**：唯一一条 fd-zhengxin 于 2026-11-14 兑现了解除条件——
+# 补上 src/pages/entries.test.tsx（三入口 × 两语 + 路由在场 + 令牌存取，8 条），
+# 并证明过它能红（改坏一条文案 ⇒ 1 red；改坏一个路由 ⇒ 1 red）。
+UNTESTED_KNOWN: dict[str, str] = {}
 
 NO_TESTS_PATTERNS = (
     "no test files found",  # vitest：有 test 脚本但一个测试文件都没有

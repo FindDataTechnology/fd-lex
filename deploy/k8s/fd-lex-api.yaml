@@ -64,22 +64,40 @@ spec:
             - secretRef:
                 name: fd-lex-env
           env:
-            # ── 门 K 顾客轨接线（change converge-line-identity-and-keys 8.2 的最后一公里）──
-            # 代码早就在本片里（`console_api/line_auth.py` + `line_token.py`，源真 b562548），
-            # 缺的是这套部署的配置：`line_settings_from_config()` 拿不到 issuer/公钥时
-            # `settings.configured` 为假 ⇒ `line_auth` 直接跳过，词元票一律落回原 Logto 401。
+            # ── 门 K 顾客轨的三个配置项（change converge-line-identity-and-keys 8.2）──
+            # `line_settings_from_config()` 读这三个键；任一缺失时 `settings.configured`
+            # 为假 ⇒ `line_auth` 跳过这条轨，词元票落回原 Logto 401（fail-closed）。
             #
-            # 三个值刻意与 `fd-wire-api` 同处方（那条线已实测 200/401/403 六条）：
+            # **2026-11-14 订正一处我自己的误判**：这三个键其实自 2026-11-12 起就在
+            # Secret `fd-lex-env`（21 键）里，`envFrom` 早就把它们注进 pod 了——用同片
+            # 镜像加只挂 `envFrom: fd-lex-env` 的一次性 Pod 实测 `configured=True`
+            # （issuer `https://mcp.finddatatech.cloud`、pem 178 字节）。所以门 K 在 11-12
+            # 出片后**就已经生效**，不是「缺配置」；今天的增量是补了密码学实证（真票
+            # 200 / 异线票拒 / 空与垃圾票拒），此前只有「变量在场 ⇒ 应生效」的推断。
+            #
+            # 那为什么还要在清单里再写一遍（与 `fd-wire-api:313+` 同处方）：
+            #   · **让依赖在 git 里可见**——`fd-lex-env` 是 `kubectl apply` 手改的，
+            #     21 个键里藏着哪几个是门 K 的，只有翻 Secret 才知道；
+            #   · **公钥有自己的轮换面**——不必为了换一把公开材料去重写那个装着库口令、
+            #     Mongo URI、admin key 的 Secret（单键 patch 会整体替换整张 map 的手感太险）。
+            # ⚠ **`env:` 覆盖 `envFrom`**：这三个值一旦与 `fd-lex-env` 里那三个键不一致，
+            # 生效的是这里。所以**轮换公钥只改 `fd-lex-line-token` 不会害事，只改
+            # `fd-lex-env` 则完全无效**。两份副本里以本文件为准，`fd-lex-env` 那三个键
+            # 已按 JSON patch 精确删除（2026-11-14，先删后验，其余 18 键未动）。
+            #
+            # 取值口径：
             #   · issuer 必须与网关签发时的 `iss` **逐字相同**（`gateway/line-token-exchange.js`
             #     的缺省 `https://mcp.finddatatech.cloud`，线上未覆盖）；
-            #   · line 缺省已是 `lex`，但显式写出，免得日后改配置时靠猜；
-            #   · **公钥走 Secret 的 `public_key_pem`**，不写 JWKS URI：`verify_line_token()`
+            #   · line 缺省已是 `lex`，显式写出，免得日后改配置时靠猜；
+            #   · **公钥走 Secret 的 `public_key_pem`，不配 JWKS URI**：`verify_line_token()`
             #     只在 `jwks_client_factory is not None` 时才走 JWKS 分支，而 `line_auth.py`
             #     的调用处**不注入工厂** ⇒ 只配 `LINE_TOKEN_JWKS_URI` 会以
             #     `NOT_CONFIGURED: no verification key source` 静默失效（看着配齐、实际不通）。
-            # 公钥是 JWKS 里那把 `kid=lex-1`（P-256）的 SPKI，非机密；Secret 见
-            # `fd-lex-line-token`（与 `fd-wire-line-token` 同形，单键 public_key_pem）。
-            # 回滚：删掉这三个 env 并滚一次，行为回到与本片之前逐字节一致。
+            # 公钥是 JWKS 里 `kid=lex-1`（P-256）的 SPKI（公开材料）；Secret
+            # `fd-lex-line-token` 与 `fd-wire-line-token` 同形，单键 public_key_pem。
+            # 回滚：删掉这三个 env 并滚一次，同时把这三个键补回 `fd-lex-env`
+            # （2026-11-14 起那里已没有它们 —— 只删 env 不补键 = 门 K fail-closed，
+            # 其它两条路径不受影响，但词元票会回到 401）。
             - name: LINE_TOKEN_ISSUER
               value: https://mcp.finddatatech.cloud
             - name: LINE_TOKEN_LINE

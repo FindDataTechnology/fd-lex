@@ -13,6 +13,10 @@ metadata:
     app.kubernetes.io/name: fd-lex-api
     app.kubernetes.io/part-of: finddata
     app.kubernetes.io/environment: production
+    # 线上对象一直带着这个标签（按 `-l app.kubernetes.io/instance=fd-lex` 选工作负载的
+    # 巡检/脚本依赖它），但仓里此前没写——`kubectl diff` 会把它算成「本次要删掉」。
+    # 补进清单让这次 apply 纯新增，不摘任何既有字段。
+    app.kubernetes.io/instance: fd-lex
 spec:
   replicas: 2
   # fd-prod compute-quota（limits.cpu 10 核）已顶格：surge 起新 Pod 会因配额
@@ -60,6 +64,32 @@ spec:
             - secretRef:
                 name: fd-lex-env
           env:
+            # ── 门 K 顾客轨接线（change converge-line-identity-and-keys 8.2 的最后一公里）──
+            # 代码早就在本片里（`console_api/line_auth.py` + `line_token.py`，源真 b562548），
+            # 缺的是这套部署的配置：`line_settings_from_config()` 拿不到 issuer/公钥时
+            # `settings.configured` 为假 ⇒ `line_auth` 直接跳过，词元票一律落回原 Logto 401。
+            #
+            # 三个值刻意与 `fd-wire-api` 同处方（那条线已实测 200/401/403 六条）：
+            #   · issuer 必须与网关签发时的 `iss` **逐字相同**（`gateway/line-token-exchange.js`
+            #     的缺省 `https://mcp.finddatatech.cloud`，线上未覆盖）；
+            #   · line 缺省已是 `lex`，但显式写出，免得日后改配置时靠猜；
+            #   · **公钥走 Secret 的 `public_key_pem`**，不写 JWKS URI：`verify_line_token()`
+            #     只在 `jwks_client_factory is not None` 时才走 JWKS 分支，而 `line_auth.py`
+            #     的调用处**不注入工厂** ⇒ 只配 `LINE_TOKEN_JWKS_URI` 会以
+            #     `NOT_CONFIGURED: no verification key source` 静默失效（看着配齐、实际不通）。
+            # 公钥是 JWKS 里那把 `kid=lex-1`（P-256）的 SPKI，非机密；Secret 见
+            # `fd-lex-line-token`（与 `fd-wire-line-token` 同形，单键 public_key_pem）。
+            # 回滚：删掉这三个 env 并滚一次，行为回到与本片之前逐字节一致。
+            - name: LINE_TOKEN_ISSUER
+              value: https://mcp.finddatatech.cloud
+            - name: LINE_TOKEN_LINE
+              value: lex
+            - name: LINE_TOKEN_PUBLIC_KEY_PEM
+              valueFrom:
+                secretKeyRef:
+                  name: fd-lex-line-token
+                  key: public_key_pem
+                  optional: true
             # 电子签编排面本地文件仓：合同全文只落客户侧（sha256 即文件名），
             # 跨出到签署服务商的只有哈希。卷丢失=待签任务不可预览、出证包不可下载，
             # 生产必须持久卷+备份。
@@ -88,6 +118,7 @@ metadata:
   labels:
     app.kubernetes.io/part-of: finddata
     app.kubernetes.io/environment: production
+    app.kubernetes.io/instance: fd-lex   # 线上已有（同上，补进清单让 apply 纯新增）
 spec:
   accessModes: [ReadWriteOnce]
   resources:
@@ -102,6 +133,7 @@ metadata:
   labels:
     app.kubernetes.io/name: fd-lex-api
     app.kubernetes.io/part-of: finddata
+    app.kubernetes.io/instance: fd-lex   # 线上已有；仓里此前没写
 spec:
   # NodePort（31886）：cheap-1 宿主 Caddy /api/* 反代需要从宿主可达（wire 31883 同法；
   # README 曾写 ClusterIP，与 wire 实际形态不符，已对齐现实）。

@@ -25,7 +25,7 @@ spec:
     spec:
       containers:
         - name: web
-          image: ccr.ccs.tencentyun.com/finddata-business/fd-lex-web:sha-b0310e6 # 2026-11-18 sha-b0310e6（快照源真 46b6c07 = 合并 gitee/main 后）：营销面副驾（版面绑定 lex-marketing，不动 lex 控制台绑定）+ 共享壳静默单点登录 + 控制台试用身份（非组织用户不再 403，组织面逐条拒绝）（line-reception-teams 1.3/2.1/3.x/6.x）；回滚=sha-1bb6367
+          image: ccr.ccs.tencentyun.com/finddata-business/fd-lex-web:sha-e833b20 # 2026-11-18 sha-e833b20（源真 1404985）：在 sha-b0310e6 基础上修 consent_required 被当故障（真机跨站静默时 Logto 按客户端分别授权）；回滚=sha-b0310e6
           imagePullPolicy: IfNotPresent
           ports:
             - name: http

@@ -234,6 +234,11 @@ const zh = {
   },
   console: {
     title: "良律控制台",
+    trial: {
+      notice: "试用身份：可查看总览、用量与额度；成员、账单与凭据管理需先加入识律客户组织。",
+      orgOnlyTitle: "需要客户组织成员身份",
+      orgOnlyBody: "该入口只对识律客户组织成员开放。联系你的组织管理员或申请开通后即可使用。",
+    },
     nav: {
       overview: "总览",
       credentials: "API 凭据",

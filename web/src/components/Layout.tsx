@@ -3,6 +3,7 @@ import { Link, NavLink, useLocation } from 'react-router-dom'
 import type { ReactNode } from 'react'
 
 import SealMark from './SealMark'
+import { MarketingCopilot } from './MarketingCopilot'
 import { persistLanguage } from '../i18n'
 
 const LINE_KEYS = ['base', 'lex', 'wire', 'facet', 'constellation'] as const
@@ -166,6 +167,9 @@ function Layout({ children }: { children: ReactNode }) {
           </div>
         </div>
       </footer>
+      {/* 营销面副驾（line-reception-teams 2.1）：只挂营销 Layout，绑 `lex-marketing`
+          ——控制台的 `lex` 绑定不受影响。未绑定 / 已暂停时 loader 自己零注入。 */}
+      <MarketingCopilot />
     </div>
   )
 }

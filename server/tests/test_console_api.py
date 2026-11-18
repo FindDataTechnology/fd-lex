@@ -285,9 +285,17 @@ def test_verify_id_token_rejects_wrong_audience(monkeypatch) -> None:
         console_auth.verify_id_token(make({"aud": "someone-else", "organizations": []}))
     assert wrong_aud.value.status_code == 401
 
-    with pytest.raises(HTTPException) as wrong_org:
-        console_auth.verify_id_token(make({"organizations": ["other-org"]}))
-    assert wrong_org.value.status_code == 403
+    # 组织不命中不再 403：降级为**试用身份**（spec lex-customer-identity
+    # 「非组织个人以试用身份进入」）。组织面由 require_org_member 逐条拒绝。
+    trial_user = console_auth.verify_id_token(make({"organizations": ["other-org"]}))
+    assert trial_user.trial is True
+    assert trial_user.organizations == ["other-org"]
+
+    no_org = console_auth.verify_id_token(make({"organizations": []}))
+    assert no_org.trial is True
+
+    # 组织命中的客户成员不受影响
+    assert user.trial is False
     reset_settings()
 
 
@@ -495,3 +503,65 @@ def test_registry_unreachable_maps_to_502(console_env) -> None:
     resp = client.get("/api/console/credentials", headers=REGISTRY_HEADERS)
     assert resp.status_code == 502
     assert "unreachable" in resp.json()["detail"]
+
+# ---------------------------------------------------------------------------
+# 试用身份（spec lex-customer-identity「非组织个人以试用身份进入」）
+# ---------------------------------------------------------------------------
+
+
+def test_trial_identity_enters_readonly_faces(console_env) -> None:
+    """非组织身份能进控制台并读到只读面，而不是被 403 挡在登录外。"""
+    client, _, _, engine = console_env
+    from fd_lex_api.console_api.auth import ConsoleUser
+
+    trial = ConsoleUser(
+        identity="outsider",
+        username="outsider",
+        email="outsider@findmail.com",
+        sub="sub-999",
+        roles=[],
+        organizations=[],
+        trial=True,
+    )
+    app.dependency_overrides[require_console_or_line] = lambda: trial
+    try:
+        me = client.get("/api/console/me")
+        assert me.status_code == 200, me.text
+        body = me.json()
+        assert body["trial"] is True
+        assert body["customer"] is None  # 没有客户绑定：如实空态
+
+        usage = client.get("/api/console/usage", params={"period": "2026-11"})
+        assert usage.status_code == 200
+        quota = client.get("/api/console/quota", params={"period": "2026-11"})
+        assert quota.status_code == 200
+    finally:
+        app.dependency_overrides[require_console_or_line] = lambda: USER
+
+
+def test_trial_identity_cannot_reach_org_faces(console_env) -> None:
+    """组织面（账单 / 凭据 CRUD）对试用身份一律拒绝，且不泄露任何组织数据。"""
+    client, fake_registry, _, _ = console_env
+    from fd_lex_api.console_api.auth import ConsoleUser
+
+    trial = ConsoleUser(
+        identity="outsider", username="outsider", email="o@findmail.com",
+        sub="sub-999", roles=[], organizations=[], trial=True,
+    )
+    app.dependency_overrides[require_console_or_line] = lambda: trial
+    try:
+        for method, url, kwargs in [
+            ("get", "/api/console/billing", {"params": {"period": "2026-11"}}),
+            ("get", "/api/console/credentials", {}),
+            ("get", "/api/console/credentials/events", {}),
+            ("post", "/api/console/credentials", {"json": {"name": "x"}}),
+            ("delete", "/api/console/credentials/k1", {}),
+        ]:
+            r = getattr(client, method)(url, **kwargs)
+            assert r.status_code == 403, f"{method} {url} -> {r.status_code}"
+            detail = r.json().get("detail")
+            assert isinstance(detail, dict) and detail.get("reason") == "organization_required"
+        # 拒绝必须发生在触达 registry 之前：一次调用都不该发出去
+        assert fake_registry.calls == []
+    finally:
+        app.dependency_overrides[require_console_or_line] = lambda: USER

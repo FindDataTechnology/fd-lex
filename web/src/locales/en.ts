@@ -234,6 +234,11 @@ const en = {
   },
   console: {
     title: "LiangLü Console",
+    trial: {
+      notice: "Trial identity: overview, usage and quota are available; members, billing and credentials require membership in a Lex customer organization.",
+      orgOnlyTitle: "Customer organization membership required",
+      orgOnlyBody: "This entry is open to members of a Lex customer organization. Ask your organization admin or request access to use it.",
+    },
     nav: {
       overview: "Overview",
       credentials: "API keys",

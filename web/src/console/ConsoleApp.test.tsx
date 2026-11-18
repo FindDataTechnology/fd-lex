@@ -72,3 +72,47 @@ describe('ConsoleApp gate', () => {
     expect(panel.textContent).toContain('not a lex customer')
   })
 })
+describe('试用身份（trial）', () => {
+  it('组织面入口不可见，只读面仍在，并给出可读提示', async () => {
+    const backend = installConsoleBackend({ trial: true })
+    vi.stubGlobal('fetch', backend.fetchImpl)
+    sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(TEST_SESSION))
+    renderApp()
+
+    expect(await screen.findByTestId('console-nav')).toBeTruthy()
+    expect(screen.queryByTestId('console-nav-credentials')).toBeNull()
+    expect(screen.queryByTestId('console-nav-billing')).toBeNull()
+    // 只读面保留
+    expect(screen.getByTestId('console-nav-overview')).toBeTruthy()
+    expect(screen.getByTestId('console-nav-usage')).toBeTruthy()
+    expect(screen.getByTestId('console-nav-quota')).toBeTruthy()
+    // 入口消失要说为什么，不能静默
+    expect(screen.getByTestId('console-trial-notice')).toBeTruthy()
+  })
+
+  it('直接访问组织面路由时给出如实拒绝，而不是空白页', async () => {
+    const backend = installConsoleBackend({ trial: true })
+    vi.stubGlobal('fetch', backend.fetchImpl)
+    sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(TEST_SESSION))
+    render(
+      <MemoryRouter initialEntries={['/console/billing']}>
+        <Routes>
+          <Route path="/console/*" element={<ConsoleApp />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+    expect(await screen.findByTestId('console-org-only-notice')).toBeTruthy()
+  })
+
+  it('客户组织成员不受影响：两个入口都在，且没有试用提示', async () => {
+    const backend = installConsoleBackend()
+    vi.stubGlobal('fetch', backend.fetchImpl)
+    sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(TEST_SESSION))
+    renderApp()
+
+    expect(await screen.findByTestId('console-nav')).toBeTruthy()
+    expect(screen.getByTestId('console-nav-credentials')).toBeTruthy()
+    expect(screen.getByTestId('console-nav-billing')).toBeTruthy()
+    expect(screen.queryByTestId('console-trial-notice')).toBeNull()
+  })
+})

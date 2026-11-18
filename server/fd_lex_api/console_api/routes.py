@@ -21,7 +21,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -134,10 +134,34 @@ def me(
         "roles": user.roles,
         "organizations": user.organizations,
         "is_admin": user.has_admin_role(settings.admin_role_set()),
+        # 试用身份（登录了但不在客户组织里）：只读面 + 自有配额，组织面一律不可见。
+        "trial": user.trial,
         "customer": _customer_dict(db, customer) if customer else None,
         "identities": identities,
         "bindings": [b.as_dict() for b in binds],
     }
+
+
+
+# ---------------------------------------------------------------------------
+# 试用身份的能力门（spec lex-customer-identity「试用身份不见组织面」）
+# ---------------------------------------------------------------------------
+
+def require_org_member(user: ConsoleUser = Depends(require_console_or_line)) -> ConsoleUser:
+    """组织面专用依赖：试用身份一律拒绝，客户组织成员放行。
+
+    试用档把「准入」从组织门改成能力门，所以组织面的拒绝必须**逐条**发生，
+    而不是靠登录时一刀 403（那会把副驾刚说服的人挡在门外）。
+    """
+    if user.trial:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "reason": "organization_required",
+                "detail": "加入识律客户组织后才能使用此功能",
+            },
+        )
+    return user
 
 
 # ---------------------------------------------------------------------------
@@ -193,7 +217,7 @@ def _entry_dict(entry: LedgerEntry) -> dict[str, Any]:
 @router.get("/billing")
 def billing(
     period: str = Query(..., min_length=7, max_length=7),
-    user: ConsoleUser = Depends(require_console_or_line),
+    user: ConsoleUser = Depends(require_org_member),
     db: Session = Depends(get_db_session),
 ) -> dict[str, Any]:
     """本客户周期账本流水；未开户/未绑定返回 customer=null 的真实空态。"""
@@ -331,7 +355,7 @@ def _record_event(
 @router.get("/credentials")
 def list_credentials(
     request: Request,
-    user: ConsoleUser = Depends(require_console_or_line),
+    user: ConsoleUser = Depends(require_org_member),
     registry: RegistryPatchKeyClient = Depends(get_registry_client),
 ) -> JSONResponse:
     """列出当前客户在 registry 的凭据（元数据；明文/哈希不返回）。"""
@@ -348,7 +372,7 @@ def list_credentials(
 def mint_credential(
     body: MintBody,
     request: Request,
-    user: ConsoleUser = Depends(require_console_or_line),
+    user: ConsoleUser = Depends(require_org_member),
     db: Session = Depends(get_db_session),
     registry: RegistryPatchKeyClient = Depends(get_registry_client),
 ) -> JSONResponse:
@@ -395,7 +419,7 @@ def mint_credential(
 def revoke_credential(
     request: Request,
     key_id: str = Path(min_length=1, max_length=128),
-    user: ConsoleUser = Depends(require_console_or_line),
+    user: ConsoleUser = Depends(require_org_member),
     db: Session = Depends(get_db_session),
     registry: RegistryPatchKeyClient = Depends(get_registry_client),
 ) -> JSONResponse:
@@ -438,7 +462,7 @@ def revoke_credential(
 @router.get("/credentials/events")
 def credential_events(
     limit: int = Query(default=50, ge=1, le=200),
-    user: ConsoleUser = Depends(require_console_or_line),
+    user: ConsoleUser = Depends(require_org_member),
     db: Session = Depends(get_db_session),
 ) -> dict[str, Any]:
     """本客户经 lex 控制台发生的凭据操作留痕（审计视图；实时列表以 registry 为准）。"""

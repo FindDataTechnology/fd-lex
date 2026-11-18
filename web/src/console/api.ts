@@ -91,6 +91,8 @@ export interface MeResponse {
   roles: string[]
   organizations: string[]
   is_admin: boolean
+  /** 试用身份：登录了但不在客户组织里。只读面 + 自有配额，组织面不可见。 */
+  trial: boolean
   customer: ConsoleCustomer | null
   identities: string[]
   bindings: Array<{ id: number; customer_id: number; identity: string; note: string | null }>

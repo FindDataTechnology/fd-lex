@@ -16,9 +16,12 @@ import OverviewPage from './OverviewPage'
 import QuotaPage from './QuotaPage'
 import UsagePage from './UsagePage'
 import { ConsoleApiError, fetchMe, type MeResponse } from './api'
+import { ssoHintMark, ssoHintSeen } from '../kit/auth/sso-hint'
 import {
   ConsoleAuthError,
   beginLogin,
+  beginSilentLogin,
+  settleSilentCallback,
   clearSession,
   completeLogin,
   fetchAuthConfig,
@@ -37,6 +40,20 @@ type Phase =
   | { kind: 'logged-out'; config: ConsoleAuthConfig | null }
   | { kind: 'auth-error'; detail: string; session: ConsoleSession }
   | { kind: 'ready'; session: ConsoleSession; me: MeResponse }
+
+/** 试用身份直接访问组织面时的如实拒绝（不是空白页，也不是假装加载中）。 */
+function OrgOnlyNotice() {
+  const { t } = useTranslation()
+  return (
+    <div
+      className="rounded-lg border border-seal/30 bg-seal-soft/50 p-6"
+      data-testid="console-org-only-notice"
+    >
+      <p className="font-display text-base font-semibold text-seal">{t('console.trial.orgOnlyTitle')}</p>
+      <p className="mt-2 text-sm leading-relaxed text-ink-soft">{t('console.trial.orgOnlyBody')}</p>
+    </div>
+  )
+}
 
 function ErrorPanel({ detail, testId }: { detail: string; testId: string }) {
   const { t } = useTranslation()
@@ -79,9 +96,17 @@ export function ConsoleApp() {
 
     // 回调路径：兑换 code → 落会话 → 回 returnTo
     if (window.location.pathname === '/console/callback') {
+      // 静默尝试被拒（无活跃会话）时带 error=login_required 回来：不是故障，如实降级。
+      if (new URLSearchParams(window.location.search).get('error')) {
+        await settleSilentCallback(config)
+        window.history.replaceState(null, '', '/console')
+        setPhase({ kind: 'logged-out', config })
+        return
+      }
       try {
         const query = new URLSearchParams(window.location.search)
         const { returnTo } = await completeLogin(config, query)
+        ssoHintMark()
         navigate(returnTo, { replace: true })
         return
       } catch (err) {
@@ -102,6 +127,11 @@ export function ConsoleApp() {
       if (!session) clearSession()
     }
     if (!session) {
+      // 本浏览器在本租户登录过才值得白跳一次 prompt=none（整页跳转，不可 iframe）
+      if (ssoHintSeen()) {
+        await beginSilentLogin(config, '/console')
+        return
+      }
       setPhase({ kind: 'logged-out', config })
       return
     }
@@ -243,16 +273,26 @@ export function ConsoleApp() {
         identity={phase.me.identity}
         organization={phase.me.organizations[0] ?? null}
         isAdmin={phase.me.is_admin}
+        trial={phase.me.trial}
         onLogout={logout}
       >
         <Routes>
           <Route index element={<OverviewPage session={phase.session} />} />
           <Route
             path="credentials"
-            element={<CredentialsPage session={phase.session} />}
+            element={
+              phase.me.trial ? (
+                <OrgOnlyNotice />
+              ) : (
+                <CredentialsPage session={phase.session} />
+              )
+            }
           />
           <Route path="usage" element={<UsagePage session={phase.session} />} />
-          <Route path="billing" element={<BillingPage session={phase.session} />} />
+          <Route
+            path="billing"
+            element={phase.me.trial ? <OrgOnlyNotice /> : <BillingPage session={phase.session} />}
+          />
           <Route path="quota" element={<QuotaPage session={phase.session} />} />
         </Routes>
       </ConsoleLayout>

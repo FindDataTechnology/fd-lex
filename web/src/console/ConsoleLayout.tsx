@@ -15,11 +15,15 @@ export const CONSOLE_TABS: ReadonlyArray<{ id: ConsoleTab; to: string; labelKey:
   { id: 'quota', to: '/console/quota', labelKey: 'console.nav.quota' },
 ]
 
+/** 试用身份看不到的组织面（成员/账单/凭据管理）。与后端 require_org_member 同步。 */
+const ORG_ONLY_TABS = new Set<ConsoleTab>(['credentials', 'billing'])
+
 export function ConsoleLayout({
   active,
   identity,
   organization,
   isAdmin,
+  trial = false,
   onLogout,
   children,
 }: {
@@ -27,6 +31,8 @@ export function ConsoleLayout({
   identity: string
   organization: string | null
   isAdmin: boolean
+  /** 试用身份：隐藏组织面入口，并给出可读提示（不是静默消失）。 */
+  trial?: boolean
   onLogout: () => void
   children: ReactNode
 }) {
@@ -45,8 +51,16 @@ export function ConsoleLayout({
               <p className="mt-0.5 text-[11px] text-ink-soft">{organization}</p>
             )}
           </div>
+          {trial && (
+            <p
+              className="mx-3 mt-3 rounded border border-seal/30 bg-seal-soft/40 px-3 py-2 text-[11px] leading-relaxed text-ink-soft"
+              data-testid="console-trial-notice"
+            >
+              {t('console.trial.notice')}
+            </p>
+          )}
           <nav className="flex flex-col py-2" data-testid="console-nav">
-            {CONSOLE_TABS.map((tab) => (
+            {CONSOLE_TABS.filter((tab) => !(trial && ORG_ONLY_TABS.has(tab.id))).map((tab) => (
               <NavLink
                 key={tab.id}
                 to={tab.to}

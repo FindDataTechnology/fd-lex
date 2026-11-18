@@ -33,6 +33,8 @@ export interface ConsoleBackendOptions {
   unauthorized?: boolean
   /** 非 lex 组织：/console/me 返回 403 及 detail */
   forbiddenDetail?: string
+  /** 试用身份：/console/me 的 trial=true（组织面隐藏） */
+  trial?: boolean
   /** registry 代理返回 429（铸造配额） */
   mintStatus?: number
   mintDetail?: string
@@ -155,6 +157,7 @@ export function installConsoleBackend(
           roles: TEST_SESSION.roles,
           organizations: TEST_SESSION.organizations,
           is_admin: false,
+          trial: options.trial === true,
           customer: {
             id: 1,
             name: '识律演示客户',

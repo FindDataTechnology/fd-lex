@@ -17,7 +17,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from functools import lru_cache
 from typing import Any
 
@@ -39,6 +39,8 @@ class ConsoleUser:
     roles: list[str] = field(default_factory=list)
     organizations: list[str] = field(default_factory=list)
     claims: dict[str, Any] = field(default_factory=dict)
+    #: True = 登录了但不属任何客户组织（试用身份）。只读面 + 自有配额，无组织面。
+    trial: bool = False
 
     def has_admin_role(self, allowed: frozenset[str]) -> bool:
         return bool(allowed and (set(self.roles) & set(allowed)))
@@ -152,20 +154,13 @@ def verify_id_token(token: str, *, enforce_organization: bool = True) -> Console
         )
     required = get_settings().required_org_id_set()
     if enforce_organization and required:
-        if not user.organizations:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=(
-                    "token carries no organizations claim; request scope "
-                    "'urn:logto:scope:organizations' and ensure the user belongs to "
-                    "the lex customer organization"
-                ),
-            )
-        if not (set(user.organizations) & set(required)):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="not a lex customer: organization membership required",
-            )
+        # 组织缺失/不匹配不再直接 403：降级为**试用身份**（spec lex-customer-identity
+        # 「非组织个人以试用身份进入」）。准入从「组织门」改为「能力门」——
+        # 试用身份进得来，但组织面（成员/账单/凭据管理）由路由逐条拒绝。
+        # 这不是放宽：此前 403 的结果是副驾把人说动、登录就是死墙。
+        if not user.organizations or not (set(user.organizations) & set(required)):
+            # ConsoleUser 是 frozen 的：换一个实例而不是就地改字段。
+            user = replace(user, trial=True)
     return user
 
 

@@ -215,6 +215,32 @@ function dropPkce(): void {
 }
 
 /** 发起登录：委托壳生成 PKCE 参数并跳转（secret 生成、nonce、returnTo 都在壳里）。 */
+/** 同租户静默单点登录：发起一次 `prompt=none` 授权（整页跳；无会话会带
+ *  error=login_required 回到 /console/callback，由 completeLogin 的调用方降级处理）。 */
+export async function beginSilentLogin(config: ConsoleAuthConfig, returnTo = '/console'): Promise<void> {
+  if (!config.configured) return
+  try {
+    await authFor(config, returnTo).beginSilentLogin()
+  } catch (err) {
+    asConsoleError(err)
+  }
+}
+
+/** `/console/callback` 落在「无 code 且带 error=login_required」时调用：
+ *  清参数并返回是否静默成功（成功则调用方直接进 ready）。 */
+export async function settleSilentCallback(config: ConsoleAuthConfig): Promise<boolean> {
+  try {
+    const outcome = await authFor(config).trySilentLogin()
+    if (outcome !== 'logged-in') return false
+    const session = authFor(config).loadSession()
+    if (!session) return false
+    saveSession(toConsoleSession(session))
+    return true
+  } catch {
+    return false
+  }
+}
+
 export async function beginLogin(config: ConsoleAuthConfig, returnTo = '/console'): Promise<void> {
   if (!config.configured) {
     // 保持宿主既有语义：未配置时报 503 而不是壳的机器码

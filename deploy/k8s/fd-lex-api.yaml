@@ -13,6 +13,10 @@ metadata:
     app.kubernetes.io/name: fd-lex-api
     app.kubernetes.io/part-of: finddata
     app.kubernetes.io/environment: production
+    # 线上对象一直带着这个标签（按 `-l app.kubernetes.io/instance=fd-lex` 选工作负载的
+    # 巡检/脚本依赖它），但仓里此前没写——`kubectl diff` 会把它算成「本次要删掉」。
+    # 补进清单让这次 apply 纯新增，不摘任何既有字段。
+    app.kubernetes.io/instance: fd-lex
 spec:
   replicas: 2
   # fd-prod compute-quota（limits.cpu 10 核）已顶格：surge 起新 Pod 会因配额
@@ -60,6 +64,50 @@ spec:
             - secretRef:
                 name: fd-lex-env
           env:
+            # ── 门 K 顾客轨的三个配置项（change converge-line-identity-and-keys 8.2）──
+            # `line_settings_from_config()` 读这三个键；任一缺失时 `settings.configured`
+            # 为假 ⇒ `line_auth` 跳过这条轨，词元票落回原 Logto 401（fail-closed）。
+            #
+            # **2026-11-14 订正一处我自己的误判**：这三个键其实自 2026-11-12 起就在
+            # Secret `fd-lex-env`（21 键）里，`envFrom` 早就把它们注进 pod 了——用同片
+            # 镜像加只挂 `envFrom: fd-lex-env` 的一次性 Pod 实测 `configured=True`
+            # （issuer `https://mcp.finddatatech.cloud`、pem 178 字节）。所以门 K 在 11-12
+            # 出片后**就已经生效**，不是「缺配置」；今天的增量是补了密码学实证（真票
+            # 200 / 异线票拒 / 空与垃圾票拒），此前只有「变量在场 ⇒ 应生效」的推断。
+            #
+            # 那为什么还要在清单里再写一遍（与 `fd-wire-api:313+` 同处方）：
+            #   · **让依赖在 git 里可见**——`fd-lex-env` 是 `kubectl apply` 手改的，
+            #     21 个键里藏着哪几个是门 K 的，只有翻 Secret 才知道；
+            #   · **公钥有自己的轮换面**——不必为了换一把公开材料去重写那个装着库口令、
+            #     Mongo URI、admin key 的 Secret（单键 patch 会整体替换整张 map 的手感太险）。
+            # ⚠ **`env:` 覆盖 `envFrom`**：这三个值一旦与 `fd-lex-env` 里那三个键不一致，
+            # 生效的是这里。所以**轮换公钥只改 `fd-lex-line-token` 不会害事，只改
+            # `fd-lex-env` 则完全无效**。两份副本里以本文件为准，`fd-lex-env` 那三个键
+            # 已按 JSON patch 精确删除（2026-11-14，先删后验，其余 18 键未动）。
+            #
+            # 取值口径：
+            #   · issuer 必须与网关签发时的 `iss` **逐字相同**（`gateway/line-token-exchange.js`
+            #     的缺省 `https://mcp.finddatatech.cloud`，线上未覆盖）；
+            #   · line 缺省已是 `lex`，显式写出，免得日后改配置时靠猜；
+            #   · **公钥走 Secret 的 `public_key_pem`，不配 JWKS URI**：`verify_line_token()`
+            #     只在 `jwks_client_factory is not None` 时才走 JWKS 分支，而 `line_auth.py`
+            #     的调用处**不注入工厂** ⇒ 只配 `LINE_TOKEN_JWKS_URI` 会以
+            #     `NOT_CONFIGURED: no verification key source` 静默失效（看着配齐、实际不通）。
+            # 公钥是 JWKS 里 `kid=lex-1`（P-256）的 SPKI（公开材料）；Secret
+            # `fd-lex-line-token` 与 `fd-wire-line-token` 同形，单键 public_key_pem。
+            # 回滚：删掉这三个 env 并滚一次，同时把这三个键补回 `fd-lex-env`
+            # （2026-11-14 起那里已没有它们 —— 只删 env 不补键 = 门 K fail-closed，
+            # 其它两条路径不受影响，但词元票会回到 401）。
+            - name: LINE_TOKEN_ISSUER
+              value: https://mcp.finddatatech.cloud
+            - name: LINE_TOKEN_LINE
+              value: lex
+            - name: LINE_TOKEN_PUBLIC_KEY_PEM
+              valueFrom:
+                secretKeyRef:
+                  name: fd-lex-line-token
+                  key: public_key_pem
+                  optional: true
             # 电子签编排面本地文件仓：合同全文只落客户侧（sha256 即文件名），
             # 跨出到签署服务商的只有哈希。卷丢失=待签任务不可预览、出证包不可下载，
             # 生产必须持久卷+备份。
@@ -88,6 +136,7 @@ metadata:
   labels:
     app.kubernetes.io/part-of: finddata
     app.kubernetes.io/environment: production
+    app.kubernetes.io/instance: fd-lex   # 线上已有（同上，补进清单让 apply 纯新增）
 spec:
   accessModes: [ReadWriteOnce]
   resources:
@@ -102,6 +151,7 @@ metadata:
   labels:
     app.kubernetes.io/name: fd-lex-api
     app.kubernetes.io/part-of: finddata
+    app.kubernetes.io/instance: fd-lex   # 线上已有；仓里此前没写
 spec:
   # NodePort（31886）：cheap-1 宿主 Caddy /api/* 反代需要从宿主可达（wire 31883 同法；
   # README 曾写 ClusterIP，与 wire 实际形态不符，已对齐现实）。

@@ -101,6 +101,12 @@ describe('静默 SSO：回跳收口', () => {
     expect(sessionStorage.getItem(PKCE)).toBeNull()
   })
 
+  it('consent_required 同样降级（真机 2026-11-18：跨 app 静默时 Logto 按客户端分别授权）', async () => {
+    const { auth } = makeAuth()
+    setLocation('https://app.test/cb?error=consent_required&error_description=requested+scopes+not+granted')
+    await expect(auth.trySilentLogin()).resolves.toBe('interactive-required')
+  })
+
   it('interaction_required 同样降级', async () => {
     const { auth } = makeAuth()
     vi.stubGlobal('location', { href: 'https://app.test/cb?error=interaction_required' })

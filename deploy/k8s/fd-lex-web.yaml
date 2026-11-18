@@ -25,7 +25,7 @@ spec:
     spec:
       containers:
         - name: web
-          image: ccr.ccs.tencentyun.com/finddata-business/fd-lex-web:sha-1bb6367 # 识律产品条线（change define-lex-product-lineup，已归档 2026-11-13）：能力目录拆两段（能力 5 行 + 交付 2 行）、补 matter（案件）行、删掉 models 行「量化产物与对照评测报告随交付包」的违规承诺（与 lex-collateral 红线冲突）、index.html 加 rel=canonical 指向产品面 law.*。源真 fd-lex 6c1d8ffe；快照仓 scs001/fd-lex-priv-images 1bb6367（run 43442803933：api 1m3s / web 2m7s 绿，web digest 894010ea）；上一版 sha-26b3e49；回滚=改回 sha-26b3e49。2026-11-13 上产前：tsc 净、vitest 105 绿、build 绿、check_product_lineup --strict 八条全绿、五宿主 locale parity 绿；出片走快照仓 URL 通道（fd-lex 自身 GHA 因组织额度耗尽停摆）
+          image: ccr.ccs.tencentyun.com/finddata-business/fd-lex-web:sha-b0310e6 # 2026-11-18 sha-b0310e6（快照源真 46b6c07 = 合并 gitee/main 后）：营销面副驾（版面绑定 lex-marketing，不动 lex 控制台绑定）+ 共享壳静默单点登录 + 控制台试用身份（非组织用户不再 403，组织面逐条拒绝）（line-reception-teams 1.3/2.1/3.x/6.x）；回滚=sha-1bb6367
           imagePullPolicy: IfNotPresent
           ports:
             - name: http

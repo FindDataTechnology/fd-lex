@@ -54,8 +54,8 @@ python -m lex_packer incremental --base <full-N> --target <full-N+1> --out /tmp/
 
 - **产源**：`fd-law-data` 仓 `bin/flk-crawl.mjs`；K8s CronJob `flk-law-crawl`
   （`k8s/flk-crawl-cronjob.yaml`，schedule `30 2 * * *` = 02:30 Asia/Shanghai，
-  namespace `scraw`，镜像 `100.64.0.8:30880/lawcraw_business/fd-law-data:v0.1.9`）。
-- **落点**：RustFS `http://100.64.0.11:9000` bucket `laws`：
+  namespace `scraw`，镜像 `<internal-registry>/lawcraw_business/fd-law-data:v0.1.9`）。
+- **落点**：RustFS `http://<object-store-host>:9000` bucket `laws`：
   - `incremental/YYYY/MM/flk-YYYY-MM-DD[-partNNN].jsonl` —— 当日新增/变更法规（列同 laws 表）
   - `incremental/YYYY/MM/flk-YYYY-MM-DD.manifest.json` —— counts/byCode/window/finishedAt
   - `incremental/state.json` / `incremental/backfill-state.json` —— crawler 私有水位状态
@@ -85,9 +85,9 @@ JSONL `output/items.jl`（PVC `…-law-contracts` 挂 `/app/data`、`/app/output
 并上传 bucket `scraw-law-contracts`（chart 内 MinIO
 `minio.minio.svc.cluster.local:9000`，凭据在 committed values 里是 `change-me`
 占位、实际值走 local-only values，不在本工作树）。
-可达性复验（2026-10-05）：RustFS `100.64.0.11` 全 bucket 列表无
+可达性复验（2026-10-05）：RustFS `<object-store-host>` 全 bucket 列表无
 `scraw-law-contracts`，且各 bucket 无任何 contract/SAMR 键；历史节点
-`23.144.68.246:30900` TCP 超时。物件布局见 `openspec/specs/samr-contracts-source/spec.md`
+`<external-store>:30900` TCP 超时。物件布局见 `openspec/specs/samr-contracts-source/spec.md`
 （SQLite 表 `contracts`；对象键 `contracts/{type}/{id}.pdf|docx`，PDF=type2 / Word=type1）。
 故构建器保留接口位
 `lex_packer.sources.SamrContractSource`（`--contract-source` 本地 JSONL/SQLite，

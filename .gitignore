@@ -39,3 +39,6 @@ packer/dist/
 # Local dev databases (server 本地运行产生，不入库)
 server/*.db
 server/*.db-journal
+
+# test artefacts
+web/.vitest/

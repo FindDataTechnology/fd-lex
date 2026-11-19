@@ -1,7 +1,7 @@
 """数据源适配（只读）与 JSONL 落盘。
 
 数据源口径（INFRA-NOTES / fd-legal-search-mcp/.env）：
-- law_db：``fdbiz_ro@100.64.0.5:5432/law_db``（只读账号）；表
+- law_db：``fdbiz_ro@<law-db-host>:5432/law_db``（只读账号）；表
   laws=32,296 / law_chunks_v2 / guide_cases=293 / legal_documents=29,958。
 - wenshu_db：同实例（judgments），文书包只做门禁与子集，绝不真打全量。
 - SAMR 合同范本语料（scraw-law-contracts 爬虫产物）实址不在本机：见
@@ -221,8 +221,8 @@ class SamrContractSource:
     - 产物落点：SQLite ``data/scraw.db`` + JSONL ``output/items.jl``（PVC）与
       对象存储 bucket ``scraw-law-contracts``（chart 内 MinIO endpoint
       ``minio.minio.svc.cluster.local:9000``；历史上另有
-      ``23.144.68.246:30900`` 的 HTTP 实例）；
-    - 本机/tailnet 均不可直达：RustFS(100.64.0.11) 无该 bucket，23.144.68.246:30900
+      ``<external-store>:30900`` 的 HTTP 实例）；
+    - 本机/tailnet 均不可直达：RustFS(<object-store-host>) 无该 bucket，<external-store>:30900
       超时。故构建器只保留接口位：语料包构建必须显式提供本地 JSONL/SQLite
       （或在可达环境直读），缺席即经 --allow-missing 如实记录 missing_inputs。
     """

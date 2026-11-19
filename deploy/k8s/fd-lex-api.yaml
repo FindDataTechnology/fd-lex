@@ -2,7 +2,7 @@
 # 识律平台 API（计量/结算/对账/内部管理面，FastAPI on :8000）。
 # 只暴露 ClusterIP；控制台将来经 web/nginx /api/ 反代启用（wire 同法）。
 # 2026-11-09 sha-9183f74：案件脊柱（change lex-matter-spine，源真 c6177c3）——
-# initContainer 将执行迁移 0003_lex_matter（已在 cheap-3 真实库副本验证后上产）。
+# initContainer 将执行迁移 0003_lex_matter（已在 the relay node 真实库副本验证后上产）。
 # env ← Secret fd-lex-env（键名表 deploy/README.md；清单无明文）。
 apiVersion: apps/v1
 kind: Deployment
@@ -153,7 +153,7 @@ metadata:
     app.kubernetes.io/part-of: finddata
     app.kubernetes.io/instance: fd-lex   # 线上已有；仓里此前没写
 spec:
-  # NodePort（31886）：cheap-1 宿主 Caddy /api/* 反代需要从宿主可达（wire 31883 同法；
+  # NodePort（31886）：宿主 Caddy /api/* 反代需要从宿主可达（wire 31883 同法；
   # README 曾写 ClusterIP，与 wire 实际形态不符，已对齐现实）。
   type: NodePort
   selector:

@@ -4,7 +4,7 @@
 - 产源：``fd-law-data`` 仓 ``bin/flk-crawl.mjs``，K8s CronJob ``flk-law-crawl``
   （``k8s/flk-crawl-cronjob.yaml``，schedule ``30 2 * * *`` = 02:30 Asia/Shanghai，
   namespace ``scraw``，镜像 ``fd-law-data:v0.1.9``）。
-- 产物落点：RustFS ``http://100.64.0.11:9000`` bucket ``laws`` 的 ``incremental/`` 前缀：
+- 产物落点：RustFS ``http://<object-store-host>:9000`` bucket ``laws`` 的 ``incremental/`` 前缀：
     ``incremental/YYYY/MM/flk-YYYY-MM-DD[-partNNN].jsonl``   当日新增/变更法规（记录列= laws 表）
     ``incremental/YYYY/MM/flk-YYYY-MM-DD.manifest.json``     当日 flk manifest（counts/byCode/window/finishedAt）
     ``incremental/state.json`` / ``incremental/backfill-state.json``   水位与已见集合（crawler 私有状态）

@@ -1,5 +1,7 @@
 # fd-lex
 
+> **Part of the [Lex line (寻数·识律)](https://www.finddatatech.cloud/products/lex) of [FindData](https://www.finddatatech.cloud)** — the legal workbench platform: matter management, metering and metering audit, served as REST and MCP surfaces.
+
 识律（lex）独立平台门面单仓：四入口的 web 面（官网 / 控制台 / 管理后台）+ FastAPI 服务端（结算/分发/后台 API）。
 
 **两个宿主面（不是同一入口的两个地址）**——完整口径见 `docs/PRODUCT-LINEUP.md` 与单一真源 `docs/product-lineup.json`：
@@ -63,5 +65,5 @@ GitHub Actions -> TCR 个人版（`.github/workflows/image.yml`，一个 workflo
 
 - 仓库：`hkccr.ccs.tencentyun.com/finddata-business/fd-lex-web`、`.../fd-lex-api`
 - tag：`sha-<短哈希>` + `main`；provenance 关闭、gha 缓存
-- cheap-3 tcr-relay 5 分钟内回灌 `ccr` 侧
+- the relay node tcr-relay 5 分钟内回灌 `ccr` 侧
 - 配方：`docs/IMAGE-RELEASE.md`（硬性要求：上游源为默认，国内镜像源一律 ARG 且默认空）

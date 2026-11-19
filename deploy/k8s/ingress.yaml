@@ -1,7 +1,7 @@
 # fd-lex Ingress — 占位（placeholder）。
 # 路由意图的 git 声明：host lex.finddatatech.cloud，/、/console、/admin →
 # fd-lex-web。cheap 集群无 ingress controller：实际上线路径与 wire/wanxing
-# 同法——cheap-1 SafeLine→Caddy→tailscale → fd-lex-web NodePort 31885，
+# 同法——宿主 SafeLine→Caddy→tailscale → fd-lex-web NodePort 31885，
 # TLS 在 Caddy 终结。/mcp 不在此处：由边缘 Caddy 直接反代 registry lex 入口
 #（鉴权/逐调用审计在 registry 侧），流量不进本集群——wire ingress.yaml 同决策。
 apiVersion: networking.k8s.io/v1

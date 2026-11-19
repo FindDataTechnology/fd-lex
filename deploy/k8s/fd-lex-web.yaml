@@ -1,6 +1,6 @@
 # fd-lex-web — prod (fd-prod)
 # 识律门面静态面（官网 / /console / /admin SPA；nginx on :80）。
-# 对外：NodePort ← cheap-1 SafeLine→Caddy→tailscale（lex.finddatatech.cloud，
+# 对外：NodePort ← 宿主 SafeLine→Caddy→tailscale（lex.finddatatech.cloud，
 # wire/wanxing 同法）；/mcp 由 Caddy 直接反代 registry lex 入口，不经本 Service。
 apiVersion: apps/v1
 kind: Deployment

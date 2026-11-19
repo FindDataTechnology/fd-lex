@@ -21,7 +21,7 @@ validation_check，degraded 如实带出）→ esign_task，
 溯源三件套一律取**检索服务原生返回**，不由调用方拼接。
 
 用法：
-    MCP_TOKEN=... MCP_URL=http://cheap6.mesh.finddata.cn:30840/mcp \
+    MCP_TOKEN=... MCP_URL=http://<node>:30840/mcp \
         python3 fd-lex/server/scripts/live_matter_chain.py
 退出码：0 全通 / 1 任一条不满足（逐条打印）。
 """
@@ -96,13 +96,19 @@ def sha(text: str) -> str:
 # ── 主链 ───────────────────────────────────────────────────────────────────
 
 def main() -> int:
-    url = os.environ.get("MCP_URL", "http://cheap6.mesh.finddata.cn:30840/mcp")
+    url = os.environ.get("MCP_URL")
+    if not url:
+        print("缺 MCP_URL（本脚本要打哪个网关没有默认值：地址随部署不同）", file=sys.stderr)
+        return 1
     token = os.environ.get("MCP_TOKEN") or None
     if not token:
         print("缺 MCP_TOKEN（law-bench 侧需要）", file=sys.stderr)
         return 1
     # 检索面是另一个 MCP：fd-legal-search-mcp（法条/类案在这里，不在 law-bench）
-    search_url = os.environ.get("SEARCH_MCP_URL", "http://cheap6.mesh.finddata.cn:31884/mcp")
+    search_url = os.environ.get("SEARCH_MCP_URL")
+    if not search_url:
+        print("缺 SEARCH_MCP_URL", file=sys.stderr)
+        return 1
     search_token = os.environ.get("SEARCH_MCP_TOKEN") or None
 
     # 临时库没有迁移链可跑，必须显式打开自动建表（与 tests/conftest.py 同一惯例：

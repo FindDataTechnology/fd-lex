@@ -1,5 +1,11 @@
 # fd-lex
 
+<!-- deploy-location -->
+> **部署清单不在本仓。** 集群清单已迁至 `fd-infra-deploy/all-services/`，
+> Application 定义在 `fd-infra-deploy/argocd/`。
+> 原因与判据：`openspec/changes/consolidate-deploy-manifests`（2026-11-20）。
+
+
 > **Part of the [Lex line (寻数·识律)](https://www.finddatatech.cloud/products/lex) of [FindData](https://www.finddatatech.cloud)** — the legal workbench platform: matter management, metering and metering audit, served as REST and MCP surfaces.
 
 识律（lex）独立平台门面单仓：四入口的 web 面（官网 / 控制台 / 管理后台）+ FastAPI 服务端（结算/分发/后台 API）。

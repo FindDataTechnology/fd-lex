@@ -225,7 +225,6 @@ const en = {
     },
     contactLabel: "Contact",
     contactPending: "Business contact channel being set up",
-    icp: "ICP filing information to be added",
     copyright: "© 2026 FindData · LiangLü",
   },
   lang: {

@@ -3,6 +3,7 @@ import { Link, NavLink, useLocation } from 'react-router-dom'
 import type { ReactNode } from 'react'
 
 import SealMark from './SealMark'
+import { ICP_FILING, MPS_FILING } from './filing'
 import { MarketingCopilot } from './MarketingCopilot'
 import { persistLanguage } from '../i18n'
 
@@ -163,7 +164,14 @@ function Layout({ children }: { children: ReactNode }) {
 
           <div className="mt-14 flex flex-wrap items-center justify-between gap-3 border-t border-white/15 pt-6 text-xs text-white/55">
             <p>{t('footer.copyright')}</p>
-            <p>{t('footer.icp')}</p>
+            <p className="flex flex-wrap items-center gap-3">
+              <a className="hover:text-white" href={ICP_FILING.href} target="_blank" rel="noopener noreferrer">
+                {ICP_FILING.label}
+              </a>
+              <a className="hover:text-white" href={MPS_FILING.href} target="_blank" rel="noopener noreferrer">
+                {MPS_FILING.label}
+              </a>
+            </p>
           </div>
         </div>
       </footer>

@@ -225,7 +225,6 @@ const zh = {
     },
     contactLabel: "联系",
     contactPending: "商务联系渠道配置中",
-    icp: "ICP 备案信息待补充",
     copyright: "© 2026 寻数（FindData）· 良律 LiangLü",
   },
   lang: {
